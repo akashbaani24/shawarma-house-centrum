@@ -74,6 +74,7 @@ interface ReportData {
   from: string
   to: string
   businessName: string
+  logoUrl: string | null
   entries: EntryItem[]
   total: number
   byCategory: { category: string; amount: number }[]
@@ -218,7 +219,12 @@ export default function ExpenseDetailsView() {
           <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-4 sm:p-6 print:border-black print:p-3 shadow-sm">
             {/* Header */}
             <div className="flex items-end justify-between border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black pb-2 mb-3">
-              <div className="text-xl sm:text-2xl font-bold tracking-tight">{report.businessName}</div>
+              <div className="flex items-center gap-3">
+                {report.logoUrl && (
+                  <img src={report.logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded" />
+                )}
+                <div className="text-xl sm:text-2xl font-bold tracking-tight">{report.businessName}</div>
+              </div>
               <div className="text-xs sm:text-sm">
                 <div className="text-neutral-500">Expense Details</div>
                 <div className="font-semibold tabular-nums">{fromDateDisplay} — {toDateDisplay}</div>

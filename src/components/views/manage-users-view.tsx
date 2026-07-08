@@ -8,6 +8,12 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Table,
   TableBody,
   TableCell,
@@ -30,6 +36,7 @@ import {
   Shield,
   User as UserIcon,
   Mail,
+  Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -72,6 +79,15 @@ export default function ManageUsersView({
   const [role, setRole] = useState<'USER' | 'ADMIN'>('USER')
   const [rights, setRights] = useState<string[]>(['dashboard', 'report'])
   const [submitting, setSubmitting] = useState(false)
+
+  // edit form
+  const [editingUser, setEditingUser] = useState<UserItem | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPassword, setEditPassword] = useState('')
+  const [editRole, setEditRole] = useState<'USER' | 'ADMIN'>('USER')
+  const [editRights, setEditRights] = useState<string[]>([])
+  const [editSubmitting, setEditSubmitting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -145,6 +161,51 @@ export default function ManageUsersView({
       load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to delete')
+    }
+  }
+
+  const openEditDialog = (u: UserItem) => {
+    setEditingUser(u)
+    setEditName(u.name || '')
+    setEditEmail(u.email)
+    setEditPassword('')
+    setEditRole(u.role as 'USER' | 'ADMIN')
+    setEditRights(u.rights)
+  }
+
+  const toggleEditRight = (key: string) => {
+    setEditRights((prev) =>
+      prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key],
+    )
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingUser) return
+    setEditSubmitting(true)
+    try {
+      const data: Record<string, unknown> = {
+        name: editName.trim(),
+        email: editEmail.trim().toLowerCase(),
+        role: editRole,
+        rights: editRole === 'ADMIN' ? ALL_RIGHTS.map((r) => r.key) : editRights,
+      }
+      if (editPassword) data.password = editPassword
+
+      const res = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d?.error || 'Failed')
+      toast.success('User updated')
+      setEditingUser(null)
+      load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update user')
+    } finally {
+      setEditSubmitting(false)
     }
   }
 
@@ -319,17 +380,28 @@ export default function ManageUsersView({
                             )}
                           </TableCell>
                           <TableCell className="py-2.5">
-                            {!isSelf && (
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
-                                onClick={() => handleDelete(u)}
-                                aria-label="Delete user"
+                                className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-0 group-hover:opacity-100"
+                                onClick={() => openEditDialog(u)}
+                                aria-label="Edit user"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                            )}
+                              {!isSelf && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
+                                  onClick={() => handleDelete(u)}
+                                  aria-label="Delete user"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -341,6 +413,73 @@ export default function ManageUsersView({
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit User — {editingUser?.name || editingUser?.email}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">Name</Label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Email / Username</Label>
+                <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">New Password (leave blank to keep)</Label>
+                <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="••••••••" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Role</Label>
+                <Select value={editRole} onValueChange={(v) => setEditRole(v as 'USER' | 'ADMIN')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USER">User (staff)</SelectItem>
+                    <SelectItem value="ADMIN">Admin (full access)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {editRole === 'USER' && (
+              <div>
+                <Label className="mb-2 block">Access Rights</Label>
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
+                  {ALL_RIGHTS.map((r) => (
+                    <label key={r.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={editRights.includes(r.key)}
+                        onCheckedChange={() => toggleEditRight(r.key)}
+                      />
+                      <span>{r.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingUser(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1" disabled={editSubmitting}>
+                {editSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

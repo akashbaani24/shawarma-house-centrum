@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Receipt,
   TrendingUp,
+  Settings,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -28,6 +29,7 @@ import OpeningBalanceView from '@/components/views/opening-balance-view'
 import DailyReportView from '@/components/views/daily-report-view'
 import ExpenseDetailsView from '@/components/views/expense-details-view'
 import InvestmentReportView from '@/components/views/investment-report-view'
+import SettingsView from '@/components/views/settings-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -45,6 +47,7 @@ export type ViewKey =
   | 'investment-report'
   | 'users'
   | 'reset'
+  | 'settings'
   | 'bank-accounts'
 
 interface NavItem {
@@ -75,6 +78,7 @@ const REPORT_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { key: 'users', label: 'Manage Users', icon: Users, adminOnly: true },
+  { key: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
   { key: 'reset', label: 'Reset Data', icon: AlertTriangle, adminOnly: true },
 ]
 
@@ -292,6 +296,7 @@ function AppShellInner({
             {view === 'expense-details' && <ExpenseDetailsView />}
             {view === 'investment-report' && <InvestmentReportView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
+            {view === 'settings' && isAdmin && <SettingsView />}
             {view === 'reset' && isAdmin && <ResetDataView />}
           </div>
         </main>

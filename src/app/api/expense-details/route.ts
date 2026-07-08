@@ -23,22 +23,25 @@ export async function GET(req: NextRequest) {
   }
 
   // Expense Details: includes BOTH branch + office expenses (with source label)
-  const entries = await db.entry.findMany({
-    where: { kind: 'EXPENSE', date: { gte: from, lte: to } },
-    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
-    select: {
-      id: true,
-      category: true,
-      amount: true,
-      note: true,
-      date: true,
-      paymentMethod: true,
-      source: true,
-      bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
-      creator: { select: { name: true, email: true } },
-      createdAt: true,
-    },
-  })
+  const [entries, businessProfile] = await Promise.all([
+    db.entry.findMany({
+      where: { kind: 'EXPENSE', date: { gte: from, lte: to } },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        category: true,
+        amount: true,
+        note: true,
+        date: true,
+        paymentMethod: true,
+        source: true,
+        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
+        creator: { select: { name: true, email: true } },
+        createdAt: true,
+      },
+    }),
+    db.businessProfile.findFirst(),
+  ])
 
   // Group by category for the summary
   const byCategory = new Map<string, number>()
@@ -72,6 +75,7 @@ export async function GET(req: NextRequest) {
     from,
     to,
     businessName: session.user.businessName,
+    logoUrl: businessProfile?.logoUrl ?? null,
     entries,
     total,
     byCategory: Array.from(byCategory.entries())

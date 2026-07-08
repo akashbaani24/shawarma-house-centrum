@@ -110,3 +110,9 @@ model Denomination {
   @@unique([date, denomination])
   @@index([date])
 }
+
+model BusinessProfile {
+  id        String   @id @default(cuid())
+  logoUrl   String?
+  updatedAt DateTime @updatedAt
+}

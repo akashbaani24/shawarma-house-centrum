@@ -14,7 +14,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Landmark, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Landmark, Plus, Trash2, Loader2, Pencil } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
 interface BankAccountItem {
@@ -35,6 +41,14 @@ export default function BankAccountsView() {
   const [accountNumber, setAccountNumber] = useState('')
   const [branch, setBranch] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // edit form
+  const [editingAccount, setEditingAccount] = useState<BankAccountItem | null>(null)
+  const [editBankName, setEditBankName] = useState('')
+  const [editAccountName, setEditAccountName] = useState('')
+  const [editAccountNumber, setEditAccountNumber] = useState('')
+  const [editBranch, setEditBranch] = useState('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -114,6 +128,45 @@ export default function BankAccountsView() {
       )
     } catch {
       toast.error('Failed to update')
+    }
+  }
+
+  const openEditDialog = (acct: BankAccountItem) => {
+    setEditingAccount(acct)
+    setEditBankName(acct.bankName)
+    setEditAccountName(acct.accountName)
+    setEditAccountNumber(acct.accountNumber)
+    setEditBranch(acct.branch || '')
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingAccount) return
+    if (!editBankName.trim() || !editAccountName.trim() || !editAccountNumber.trim()) {
+      toast.error('Bank name, account name and number are required')
+      return
+    }
+    setEditSubmitting(true)
+    try {
+      const res = await fetch(`/api/bank-accounts/${editingAccount.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankName: editBankName.trim(),
+          accountName: editAccountName.trim(),
+          accountNumber: editAccountNumber.trim(),
+          branch: editBranch.trim(),
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d?.error || 'Failed')
+      toast.success('Bank account updated')
+      setEditingAccount(null)
+      load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setEditSubmitting(false)
     }
   }
 
@@ -235,15 +288,26 @@ export default function BankAccountsView() {
                           </button>
                         </TableCell>
                         <TableCell className="py-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
-                            onClick={() => handleDelete(acct)}
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-0 group-hover:opacity-100"
+                              onClick={() => openEditDialog(acct)}
+                              aria-label="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
+                              onClick={() => handleDelete(acct)}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -254,6 +318,45 @@ export default function BankAccountsView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Bank Account Dialog */}
+      <Dialog open={!!editingAccount} onOpenChange={(open) => !open && setEditingAccount(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Bank Account — {editingAccount?.bankName}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block">Bank Name</Label>
+              <Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} required />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Account Name</Label>
+              <Input value={editAccountName} onChange={(e) => setEditAccountName(e.target.value)} required />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Account Number</Label>
+              <Input value={editAccountNumber} onChange={(e) => setEditAccountNumber(e.target.value)} required />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Branch (optional)</Label>
+              <Input value={editBranch} onChange={(e) => setEditBranch(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingAccount(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1" disabled={editSubmitting}>
+                {editSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

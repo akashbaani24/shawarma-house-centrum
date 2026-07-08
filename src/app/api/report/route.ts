@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
   }
 
-  const [entries, denomRows, openingInfo] = await Promise.all([
+  const [entries, denomRows, openingInfo, businessProfile] = await Promise.all([
     // Branch Daily Report: exclude OFFICE entries (they only show in Expense Details)
     db.entry.findMany({
       where: { date, source: 'BRANCH' },
@@ -121,6 +121,7 @@ export async function GET(req: NextRequest) {
     }),
     db.denomination.findMany({ where: { date } }),
     computeOpeningBalance(date),
+    db.businessProfile.findFirst(),
   ])
 
   const incomeEntries = entries.filter((e) => e.kind === 'INCOME')
@@ -162,6 +163,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     date,
     businessName: session.user.businessName,
+    logoUrl: businessProfile?.logoUrl ?? null,
     preparedBy,
     currentUser: session.user.name || session.user.email,
     openingBalance,
