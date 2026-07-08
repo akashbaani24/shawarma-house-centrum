@@ -40,7 +40,8 @@ const ALL_RIGHTS = [
   { key: 'types', label: 'Manage Types' },
   { key: 'bank-accounts', label: 'Bank Accounts' },
   { key: 'opening', label: 'Opening Balance' },
-  { key: 'report', label: 'Daily Report' },
+  { key: 'branch-report', label: 'Branch Daily Report' },
+  { key: 'expense-details', label: 'Expense Details' },
 ]
 
 interface UserItem {

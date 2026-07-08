@@ -17,12 +17,15 @@ import {
   Users,
   AlertTriangle,
   Landmark,
+  ChevronDown,
+  Receipt,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
 import ManageTypesView from '@/components/views/manage-types-view'
 import OpeningBalanceView from '@/components/views/opening-balance-view'
 import DailyReportView from '@/components/views/daily-report-view'
+import ExpenseDetailsView from '@/components/views/expense-details-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -33,7 +36,8 @@ export type ViewKey =
   | 'expense'
   | 'types'
   | 'opening'
-  | 'report'
+  | 'branch-report'
+  | 'expense-details'
   | 'users'
   | 'reset'
   | 'bank-accounts'
@@ -45,14 +49,23 @@ interface NavItem {
   adminOnly?: boolean
 }
 
-const NAV: NavItem[] = [
+// Standalone nav items (top level)
+const TOP_NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'income', label: 'Income Entry', icon: ArrowUpCircle },
   { key: 'expense', label: 'Expense Entry', icon: ArrowDownCircle },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
-  { key: 'report', label: 'Daily Report', icon: FileText },
+]
+
+// Report sub-menu items (under "Reports" group)
+const REPORT_NAV: NavItem[] = [
+  { key: 'branch-report', label: 'Branch Daily Report', icon: FileText },
+  { key: 'expense-details', label: 'Expense Details', icon: Receipt },
+]
+
+const ADMIN_NAV: NavItem[] = [
   { key: 'users', label: 'Manage Users', icon: Users, adminOnly: true },
   { key: 'reset', label: 'Reset Data', icon: AlertTriangle, adminOnly: true },
 ]
@@ -73,24 +86,38 @@ function AppShellInner({
   const searchParams = useSearchParams()
   const isAdmin = user.role === 'ADMIN'
 
+  // Map old 'report' key to new 'branch-report' for backward compat with rights
+  const rightsNormalized = user.rights.includes('report') && !user.rights.includes('branch-report')
+    ? [...user.rights, 'branch-report']
+    : user.rights
+
   const canSee = (item: NavItem) => {
     if (item.adminOnly) return isAdmin
-    return isAdmin || user.rights.includes(item.key)
+    return isAdmin || rightsNormalized.includes(item.key)
   }
-  const visibleNav = NAV.filter(canSee)
 
-  // Read the current view from the URL query param, default to first visible nav
+  const visibleTop = TOP_NAV.filter(canSee)
+  const visibleReports = REPORT_NAV.filter(canSee)
+  const visibleAdmin = ADMIN_NAV.filter(canSee)
+
+  const allVisible = [...visibleTop, ...visibleReports, ...visibleAdmin]
+
+  // Read the current view from the URL query param
   const paramView = searchParams.get('view') as ViewKey | null
+  // Backward compat: 'report' → 'branch-report'
+  const normalizedParam = paramView === 'report' ? 'branch-report' : paramView
   const view: ViewKey =
-    paramView && visibleNav.some((n) => n.key === paramView)
-      ? paramView
-      : visibleNav[0]?.key ?? 'dashboard'
+    normalizedParam && allVisible.some((n) => n.key === normalizedParam)
+      ? normalizedParam
+      : allVisible[0]?.key ?? 'dashboard'
 
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [reportsOpen, setReportsOpen] = useState(
+    visibleReports.some((n) => n.key === view),
+  )
 
   const displayName = user.businessName || user.name || 'Daily Report'
 
-  // Navigate to a view by updating the URL query param (client-side, no reload)
   const handleNav = useCallback(
     (key: ViewKey) => {
       router.push(`/?view=${key}`)
@@ -98,6 +125,38 @@ function AppShellInner({
     },
     [router],
   )
+
+  const renderNavItem = (item: NavItem) => {
+    const Icon = item.icon
+    const active = view === item.key
+    const isDanger = item.key === 'reset'
+    const href = `/?view=${item.key}`
+    return (
+      <a
+        key={item.key}
+        href={href}
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return
+          e.preventDefault()
+          handleNav(item.key)
+        }}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          active
+            ? isDanger
+              ? 'bg-rose-600 text-white shadow-sm'
+              : 'bg-emerald-600 text-white shadow-sm'
+            : isDanger
+            ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+        }`}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span>{item.label}</span>
+      </a>
+    )
+  }
+
+  const isReportActive = visibleReports.some((n) => n.key === view)
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
@@ -136,44 +195,59 @@ function AppShellInner({
               </div>
             </div>
 
-            {/* Nav — each item is an <a> tag so the browser's native right-click
-                context menu includes "Open in new tab" / "Open in new window" /
-                "Copy link". Left-click does SPA navigation via router.push. */}
+            {/* Nav */}
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-              {visibleNav.map((item) => {
-                const Icon = item.icon
-                const active = view === item.key
-                const isDanger = item.key === 'reset'
-                const href = `/?view=${item.key}`
-                return (
-                  <a
-                    key={item.key}
-                    href={href}
-                    onClick={(e) => {
-                      // Left-click: SPA navigation (no full page reload)
-                      // Ctrl/Cmd+click or middle-click: let the browser handle it
-                      // (opens in new tab natively)
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-                        return // let default <a> behavior happen (new tab)
-                      }
-                      e.preventDefault()
-                      handleNav(item.key)
-                    }}
+              {visibleTop.map(renderNavItem)}
+
+              {/* Reports group (collapsible) */}
+              {visibleReports.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setReportsOpen((o) => !o)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      active
-                        ? isDanger
-                          ? 'bg-rose-600 text-white shadow-sm'
-                          : 'bg-emerald-600 text-white shadow-sm'
-                        : isDanger
-                        ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+                      isReportActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
                         : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                     }`}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </a>
-                )
-              })}
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">Reports</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${reportsOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {reportsOpen && (
+                    <div className="mt-1 ml-3 pl-3 border-l border-neutral-200 dark:border-neutral-800 space-y-1">
+                      {visibleReports.map((item) => {
+                        const Icon = item.icon
+                        const active = view === item.key
+                        const href = `/?view=${item.key}`
+                        return (
+                          <a
+                            key={item.key}
+                            href={href}
+                            onClick={(e) => {
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return
+                              e.preventDefault()
+                              handleNav(item.key)
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                              active
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span>{item.label}</span>
+                          </a>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {visibleAdmin.map(renderNavItem)}
             </nav>
 
             {/* Logout */}
@@ -199,7 +273,8 @@ function AppShellInner({
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
             {view === 'bank-accounts' && <BankAccountsView />}
-            {view === 'report' && <DailyReportView />}
+            {view === 'branch-report' && <DailyReportView />}
+            {view === 'expense-details' && <ExpenseDetailsView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'reset' && isAdmin && <ResetDataView />}
           </div>

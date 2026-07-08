@@ -187,8 +187,8 @@ export default function DailyReportView() {
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-neutral-400" />
             <div>
-              <div className="text-sm font-medium">{formatLongDate(date)}</div>
-              <div className="text-xs text-neutral-500">Select the day to view report</div>
+              <div className="text-base font-semibold">Branch Daily Report</div>
+              <div className="text-xs text-neutral-500">{formatLongDate(date)} · Select the day to view report</div>
             </div>
           </div>
           <div className="flex items-center gap-2">

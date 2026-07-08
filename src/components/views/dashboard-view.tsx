@@ -140,10 +140,10 @@ export default function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey)
               <div className="text-xs text-neutral-500">Record expense</div>
             </div>
           </Button>
-          <Button variant="outline" className="h-auto py-4 justify-start" onClick={() => onNavigate('report')}>
+          <Button variant="outline" className="h-auto py-4 justify-start" onClick={() => onNavigate('branch-report')}>
             <FileText className="h-5 w-5 mr-2 text-sky-600" />
             <div className="text-left">
-              <div className="text-sm font-semibold">Daily Report</div>
+              <div className="text-sm font-semibold">Branch Daily Report</div>
               <div className="text-xs text-neutral-500">View & balance</div>
             </div>
           </Button>

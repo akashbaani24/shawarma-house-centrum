@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Shawarma House : Centrum Branch",
-  description: "Daily Cash Report — track receipts, payments, sales and deposits.",
-  keywords: ["daily report", "cash", "expense", "income", "tracker", "Shawarma House"],
+  description: "Branch Daily Report — track receipts, payments, sales and deposits.",
+  keywords: ["daily report", "cash", "expense", "income", "tracker", "Shawarma House", "branch report"],
   authors: [{ name: "Shawarma House" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
