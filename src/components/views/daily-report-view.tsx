@@ -185,14 +185,14 @@ export default function DailyReportView() {
       {/* Date navigation */}
       <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 sm:p-4 print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-neutral-400" />
-            <div>
-              <div className="text-base font-semibold">Branch Daily Report</div>
-              <div className="text-xs text-neutral-500">{formatLongDate(date)} · Select the day to view report</div>
+          <div className="flex items-center gap-2 min-w-0">
+            <CalendarDays className="h-4 w-4 text-neutral-400 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm sm:text-base font-semibold truncate">Branch Daily Report</div>
+              <div className="text-xs text-neutral-500 truncate">{formatLongDate(date)}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
             <Button variant="outline" size="icon" onClick={handlePrev} aria-label="Previous day">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -200,7 +200,7 @@ export default function DailyReportView() {
               type="date"
               value={date}
               onChange={(e) => e.target.value && setDate(e.target.value)}
-              className="w-[150px]"
+              className="w-[130px] sm:w-[150px]"
             />
             <Button
               variant={isToday ? 'secondary' : 'outline'}
@@ -230,23 +230,23 @@ export default function DailyReportView() {
       ) : (
         <>
           {/* Action bar */}
-          <div className="flex items-center justify-between gap-2 print:hidden">
+          <div className="flex items-center justify-between gap-2 print:hidden flex-wrap">
             <div className="text-xs text-neutral-500">
               {denomDirty ? (
-                <span className="text-amber-600 font-medium">● Denomination unsaved</span>
+                <span className="text-amber-600 font-medium">● Unsaved</span>
               ) : (
-                <span className="text-emerald-600">✓ Denomination saved</span>
+                <span className="text-emerald-600">✓ Saved</span>
               )}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="h-4 w-4 mr-1.5" /> Print
+                <Printer className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Print</span>
               </Button>
               <Button size="sm" onClick={handleSaveDenom} disabled={savingDenom || !denomDirty}>
                 {savingDenom ? (
-                  <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving...</>
+                  <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...</>
                 ) : (
-                  <><Save className="h-4 w-4 mr-1.5" /> Save Denomination</>
+                  <><Save className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Save Denom.</span><span className="sm:hidden">Save</span></>
                 )}
               </Button>
             </div>
@@ -285,16 +285,16 @@ export default function DailyReportView() {
           </div>
 
           {/* The report sheet */}
-          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-4 sm:p-6 print:border-black print:p-2 shadow-sm">
+          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-3 sm:p-6 print:border-black print:p-2 shadow-sm">
             {/* Header */}
-            <div className="flex items-end justify-between border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black pb-2 mb-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start sm:items-end justify-between gap-2 border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black pb-2 mb-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 {report.logoUrl && (
-                  <img src={report.logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded" />
+                  <img src={report.logoUrl} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded shrink-0" />
                 )}
-                <div className="text-xl sm:text-2xl font-bold tracking-tight">{report.businessName}</div>
+                <div className="text-base sm:text-2xl font-bold tracking-tight leading-tight">{report.businessName}</div>
               </div>
-              <div className="text-xs sm:text-sm">
+              <div className="text-xs sm:text-sm shrink-0">
                 <span className="text-neutral-500">Date: </span>
                 <span className="font-semibold tabular-nums">{dateDisplay}</span>
               </div>

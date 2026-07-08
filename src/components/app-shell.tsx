@@ -182,14 +182,14 @@ function AppShellInner({
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
       {/* Top bar (mobile) */}
-      <header className="md:hidden sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-4 py-3 flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-emerald-600 text-white grid place-items-center">
+      <header className="md:hidden sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-3 py-3 flex items-center justify-between gap-2 print:hidden">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-8 w-8 rounded-lg bg-emerald-600 text-white grid place-items-center shrink-0">
             <Wallet className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-sm truncate max-w-[140px]">{displayName}</span>
+          <span className="font-semibold text-xs sm:text-sm truncate">{displayName}</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen((o) => !o)} aria-label="Toggle menu">
+        <Button variant="ghost" size="icon" onClick={() => setMobileOpen((o) => !o)} aria-label="Toggle menu" className="shrink-0">
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </header>

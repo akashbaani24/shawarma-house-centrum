@@ -121,36 +121,39 @@
   }
 }
 
-/* Mobile responsive: make tables horizontally scrollable instead of overflowing */
+/* Mobile responsive: make tables and report sections scrollable */
 @media (max-width: 767px) {
-  /* Make all table containers scrollable on mobile */
-  .overflow-hidden {
+  /* Make table wrappers scrollable horizontally */
+  main div[class*="overflow-hidden"] {
     overflow-x: auto !important;
-    overflow-y: hidden !important;
   }
-  /* Ensure tables have a minimum width so they scroll instead of squishing */
+  /* Ensure tables don't squish too much */
   table {
-    min-width: 280px;
+    min-width: 260px;
+    width: 100%;
   }
-  /* Prevent text overflow in cells */
+  /* Allow text to wrap in cells */
   td, th {
     word-break: break-word;
     overflow-wrap: break-word;
-    white-space: normal !important;
   }
-  /* Smaller font on mobile for report tables */
+  /* Smaller text on mobile */
   .text-\[11px\] {
     font-size: 10px;
   }
   .text-\[10px\] {
     font-size: 9px;
   }
-  /* Make the report sheet use full width with less padding on mobile */
-  .p-4 {
-    padding: 0.5rem !important;
-  }
+  /* Reduce report sheet padding on mobile */
   .sm\:p-6 {
     padding: 0.5rem !important;
+  }
+  /* Make the header business name smaller on mobile */
+  .text-2xl {
+    font-size: 1.125rem !important;
+  }
+  .text-xl {
+    font-size: 1rem !important;
   }
 }
 
