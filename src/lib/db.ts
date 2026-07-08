@@ -26,6 +26,21 @@ function createPrismaClient(): PrismaClient {
   })
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient()
+// Lazy initialization via Proxy.
+// The Prisma client is NOT created at module load time — only on first property
+// access. This prevents build-time failures when DATABASE_URL isn't available
+// during `next build`'s page-data collection phase.
+function getDb(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient()
+  }
+  return globalForPrisma.prisma
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getDb()
+    const value = Reflect.get(client, prop as keyof PrismaClient)
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(client) : value
+  },
+}) as PrismaClient
