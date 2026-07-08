@@ -120,14 +120,14 @@ export default function EntryView({
       const d = await res.json()
       if (res.ok) {
         setTypes(d.types)
-        if (d.types.length > 0 && !typeId) setTypeId(d.types[0].id)
+        if (d.types.length > 0) setTypeId(d.types[0].id)
       }
     } catch {
       // ignore
     } finally {
       setLoadingTypes(false)
     }
-  }, [kind, typeId])
+  }, [kind])
 
   const loadEntries = useCallback(async () => {
     setLoadingEntries(true)
@@ -158,8 +158,9 @@ export default function EntryView({
       const d = await res.json()
       if (res.ok) {
         setExpenseCategories(d.categories)
-        // Default-select the first category
-        if (d.categories.length > 0) setExpenseCategoryId(d.categories[0].id)
+        // Default-select the first category ONLY if nothing is selected yet
+        // (don't reset on every reload — that would override user selection)
+        setExpenseCategoryId((prev) => prev || (d.categories.length > 0 ? d.categories[0].id : ''))
       }
     } catch {
       // ignore
