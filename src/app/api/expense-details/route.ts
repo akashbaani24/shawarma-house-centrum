@@ -3,8 +3,23 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
+// Categories that are NOT real expenses — they are account transfers
+// (money moving from one account to another). These show in the Branch
+// Daily Report (under Deposits) but must NOT appear in Expense Details.
+function isDepositCategory(category: string): boolean {
+  const c = category.toLowerCase().trim()
+  return (
+    c.includes('deposit') ||
+    c.includes('bank account') ||
+    c.includes('card sales') ||
+    c.includes('digital wallet') ||
+    c.includes('bkash no') ||
+    c.includes('bkash mobile')
+  )
+}
+
 // GET /api/expense-details?from=YYYY-MM-DD&to=YYYY-MM-DD
-// Returns expense entries in a date range, broken down by category, payment method, and date.
+// Returns ONLY actual expense entries (excludes deposits/transfers) in a date range.
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -22,8 +37,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from date must be before or equal to to date' }, { status: 400 })
   }
 
-  // Expense Details: includes BOTH branch + office expenses (with source label)
-  const [entries, businessProfile] = await Promise.all([
+  // Expense Details: only ACTUAL expenses — excludes deposits/transfers
+  // (Bank Deposit, bKash Mobile Deposit, etc. are account transfers, not expenses)
+  const [allEntries, businessProfile] = await Promise.all([
     db.entry.findMany({
       where: { kind: 'EXPENSE', date: { gte: from, lte: to } },
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
@@ -42,6 +58,9 @@ export async function GET(req: NextRequest) {
     }),
     db.businessProfile.findFirst(),
   ])
+
+  // Filter out deposit/transfer entries — they are NOT actual expenses
+  const entries = allEntries.filter((e) => !isDepositCategory(e.category))
 
   // Group by category for the summary
   const byCategory = new Map<string, number>()
