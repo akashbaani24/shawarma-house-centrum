@@ -50,7 +50,9 @@ async function computeOpeningBalance(
       take: 1,
     }),
     db.entry.findMany({
-      where: { date: { lt: date }, source: 'BRANCH' },
+      // Only INCOME + EXPENSE affect the branch cash flow.
+      // INVEST entries are separate (only show in Investment Report).
+      where: { date: { lt: date }, source: 'BRANCH', kind: { in: ['INCOME', 'EXPENSE'] } },
       select: { date: true, kind: true, amount: true },
     }),
   ])
@@ -111,9 +113,9 @@ export async function GET(req: NextRequest) {
   }
 
   const [entries, denomRows, openingInfo, businessProfile] = await Promise.all([
-    // Branch Daily Report: exclude OFFICE entries (they only show in Expense Details)
+    // Branch Daily Report: only INCOME + EXPENSE (exclude OFFICE entries + INVEST)
     db.entry.findMany({
-      where: { date, source: 'BRANCH' },
+      where: { date, source: 'BRANCH', kind: { in: ['INCOME', 'EXPENSE'] } },
       include: {
         creator: { select: { name: true, email: true } },
         bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },

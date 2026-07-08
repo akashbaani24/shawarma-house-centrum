@@ -121,6 +121,39 @@
   }
 }
 
+/* Mobile responsive: make tables horizontally scrollable instead of overflowing */
+@media (max-width: 767px) {
+  /* Make all table containers scrollable on mobile */
+  .overflow-hidden {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+  /* Ensure tables have a minimum width so they scroll instead of squishing */
+  table {
+    min-width: 280px;
+  }
+  /* Prevent text overflow in cells */
+  td, th {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal !important;
+  }
+  /* Smaller font on mobile for report tables */
+  .text-\[11px\] {
+    font-size: 10px;
+  }
+  .text-\[10px\] {
+    font-size: 9px;
+  }
+  /* Make the report sheet use full width with less padding on mobile */
+  .p-4 {
+    padding: 0.5rem !important;
+  }
+  .sm\:p-6 {
+    padding: 0.5rem !important;
+  }
+}
+
 /* Print styles for daily report */
 @media print {
   @page {
