@@ -251,12 +251,12 @@ export default function DailyReportView() {
             </div>
           </div>
 
-          {/* Balance check message (req 5) — visible in print too */}
-          <div className={`rounded-lg border p-3 flex items-start gap-3 ${
+          {/* Balance check message (req 5) — screen only, hidden in print */}
+          <div className={`rounded-lg border p-3 flex items-start gap-3 print:hidden ${
             liveIsBalanced
               ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30'
               : 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
-          } print:border-black print:bg-white`}>
+          }`}>
             {liveIsBalanced ? (
               <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             ) : (
