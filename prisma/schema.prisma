@@ -132,6 +132,7 @@ model Supplier {
   updatedAt DateTime @updatedAt
 
   entries   Entry[]
+  bills     SupplierBill[]
 
   @@unique([name])
 }
@@ -149,4 +150,20 @@ model ExpenseCategory {
   entries   Entry[]
 
   @@unique([name])
+}
+
+model SupplierBill {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  billDate    String   // YYYY-MM-DD — the date on the supplier's bill
+  billNumber  String?
+  billAmount  Float
+  paidAmount  Float    @default(0)
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([supplierId])
+  @@index([billDate])
 }

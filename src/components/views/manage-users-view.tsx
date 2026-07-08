@@ -53,6 +53,7 @@ const ALL_RIGHTS = [
   { key: 'branch-report', label: 'Branch Daily Report' },
   { key: 'expense-details', label: 'Expense Details' },
   { key: 'investment-report', label: 'Investment Report' },
+  { key: 'supplier-report', label: 'Supplier Report' },
 ]
 
 interface UserItem {

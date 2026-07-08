@@ -32,6 +32,7 @@ import ExpenseDetailsView from '@/components/views/expense-details-view'
 import InvestmentReportView from '@/components/views/investment-report-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
+import SupplierReportView from '@/components/views/supplier-report-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -48,6 +49,7 @@ export type ViewKey =
   | 'branch-report'
   | 'expense-details'
   | 'investment-report'
+  | 'supplier-report'
   | 'users'
   | 'reset'
   | 'settings'
@@ -78,6 +80,7 @@ const REPORT_NAV: NavItem[] = [
   { key: 'branch-report', label: 'Branch Daily Report', icon: FileText },
   { key: 'expense-details', label: 'Expense Details', icon: Receipt },
   { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
+  { key: 'supplier-report', label: 'Supplier Report', icon: Truck },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -300,6 +303,7 @@ function AppShellInner({
             {view === 'branch-report' && <DailyReportView />}
             {view === 'expense-details' && <ExpenseDetailsView />}
             {view === 'investment-report' && <InvestmentReportView />}
+            {view === 'supplier-report' && <SupplierReportView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'settings' && isAdmin && <SettingsView />}
             {view === 'reset' && isAdmin && <ResetDataView />}
