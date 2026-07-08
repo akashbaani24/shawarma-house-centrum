@@ -295,7 +295,7 @@ export default function DailyReportView() {
             </div>
 
             {/* Two-column body */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3">
               {/* LEFT: Income side */}
               <div className="space-y-3">
                 {/* Opening Balance */}
@@ -563,7 +563,7 @@ export default function DailyReportView() {
 
             {/* Totals row */}
             {/* Detailed totals row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3 mt-3">
               {/* Left totals: Income side */}
               <div className="border-2 border-neutral-800 dark:border-neutral-200 print:border-black rounded-sm overflow-hidden">
                 <Table className="text-[11px]">
