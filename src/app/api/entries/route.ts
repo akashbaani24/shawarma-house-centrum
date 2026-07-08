@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 // GET /api/entries?date=YYYY-MM-DD  -> entries for one day
-// GET /api/entries?kind=INCOME      -> all entries of a kind (most recent first)
+// GET /api/entries?kind=INCOME      -> all entries of a kind (recent 100)
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -21,15 +21,22 @@ export async function GET(req: NextRequest) {
   const entries = await db.entry.findMany({
     where,
     orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-    include: {
-      creator: { select: { name: true, email: true } },
+    take: 100,
+    select: {
+      id: true,
+      kind: true,
+      category: true,
+      amount: true,
+      note: true,
+      date: true,
+      paymentMethod: true,
       bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
     },
   })
   return NextResponse.json({ entries })
 }
 
-// POST /api/entries  { kind, typeId, category, amount, note, date }
+// POST /api/entries  { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId }
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -54,11 +61,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
     }
 
-    // Validate payment method
     const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK']
     const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
 
-    // Validate type if typeId provided
     let finalTypeId: string | null = null
     if (typeId) {
       const type = await db.entryType.findUnique({ where: { id: typeId } })
@@ -67,7 +72,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validate bank account if provided
     let finalBankAccountId: string | null = null
     if (bankAccountId && (method === 'BANK' || method === 'MOBILE_BANK')) {
       const acct = await db.bankAccount.findUnique({ where: { id: bankAccountId } })

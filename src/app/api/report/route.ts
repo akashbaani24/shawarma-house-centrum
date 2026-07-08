@@ -6,86 +6,100 @@ import { db } from '@/lib/db'
 const VALID_DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
 
 // Expense sub-section classification based on category name.
-// Returns: "EXPENSES" | "PAYMENTS" | "DEPOSITS"
 function classifyExpenseCategory(category: string): 'EXPENSES' | 'PAYMENTS' | 'DEPOSITS' {
   const c = category.toLowerCase().trim()
-  // Deposit-related categories → Deposits section
   if (
     c.includes('deposit') ||
-    c.includes('bank deposit') ||
     c.includes('bank account') ||
     c.includes('card sales') ||
     c.includes('digital wallet') ||
-    c.includes('bkash no') ||
-    c === 'bank deposit'
+    c.includes('bkash no')
   ) {
     return 'DEPOSITS'
   }
-  // Payment-to-someone categories → Payments section
   if (
     c.startsWith('payment to') ||
     c.startsWith('paid to') ||
-    c.includes('payment to partner') ||
     c.includes('advance')
   ) {
     return 'PAYMENTS'
   }
-  // Everything else → Expenses section
   return 'EXPENSES'
 }
 
-function shiftDate(dateStr: string, deltaDays: number): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + deltaDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-// Compute the opening balance for a given date (shared data, no userId)
+// Compute the opening balance for a given date using a SINGLE batched query.
+// Fetches the most recent explicit OpeningBalance + all entries between that
+// date and the target date, then walks forward in memory. This replaces the
+// old recursive approach which did up to 1000+ round-trips to Turso.
 async function computeOpeningBalance(
   date: string,
 ): Promise<{ amount: number; source: 'explicit' | 'carryover' | 'none'; sourceDate?: string }> {
-  // 1. Explicit
-  const explicit = await db.openingBalance.findUnique({ where: { date } })
-  if (explicit) {
-    return { amount: explicit.amount, source: 'explicit', sourceDate: date }
+  // 1. Check for an explicit opening balance ON the target date (highest priority)
+  const explicitToday = await db.openingBalance.findUnique({ where: { date } })
+  if (explicitToday) {
+    return { amount: explicitToday.amount, source: 'explicit', sourceDate: date }
   }
 
-  // 2. Walk backwards
-  let cursor = shiftDate(date, -1)
-  for (let i = 0; i < 366; i++) {
-    const [entries, denomRows] = await Promise.all([
-      db.entry.findMany({ where: { date: cursor } }),
-      db.denomination.findMany({ where: { date: cursor } }),
-    ])
+  // 2. Find the most recent explicit opening balance BEFORE the target date,
+  //    and all entries from that date up to (but not including) the target date.
+  //    Two queries, run in parallel — only 2 round-trips total.
+  const [openingBalances, entries] = await Promise.all([
+    db.openingBalance.findMany({
+      where: { date: { lt: date } },
+      orderBy: { date: 'desc' },
+      take: 1,
+    }),
+    db.entry.findMany({
+      where: { date: { lt: date } },
+      select: { date: true, kind: true, amount: true },
+    }),
+  ])
 
-    if (entries.length > 0 || denomRows.length > 0) {
-      const income = entries.filter((e) => e.kind === 'INCOME').reduce((s, e) => s + e.amount, 0)
-      const expense = entries.filter((e) => e.kind === 'EXPENSE').reduce((s, e) => s + e.amount, 0)
-      const prevOpening = await computeOpeningBalance(cursor)
-      const closing = prevOpening.amount + income - expense
-      return { amount: closing, source: 'carryover', sourceDate: cursor }
-    }
-
-    const ob = await db.openingBalance.findUnique({ where: { date: cursor } })
-    if (ob) {
-      const entries2 = await db.entry.findMany({ where: { date: cursor } })
-      const income = entries2.filter((e) => e.kind === 'INCOME').reduce((s, e) => s + e.amount, 0)
-      const expense = entries2.filter((e) => e.kind === 'EXPENSE').reduce((s, e) => s + e.amount, 0)
-      const closing = ob.amount + income - expense
-      return { amount: closing, source: 'carryover', sourceDate: cursor }
-    }
-
-    cursor = shiftDate(cursor, -1)
+  // 3. If there's no explicit opening balance AND no prior entries, opening = 0
+  if (openingBalances.length === 0 && entries.length === 0) {
+    return { amount: 0, source: 'none' }
   }
 
-  return { amount: 0, source: 'none' }
+  // 4. Determine the starting point
+  let runningBalance: number
+  let sourceDate: string | undefined
+  let source: 'explicit' | 'carryover'
+
+  if (openingBalances.length > 0) {
+    const anchor = openingBalances[0]
+    runningBalance = anchor.amount
+    sourceDate = anchor.date
+    source = 'explicit'
+    // Only consider entries AFTER the anchor date (anchor's own day entries
+    // are part of its closing, but since we use the anchor's opening amount
+    // as the start, we include ALL entries from anchor.date onward up to target)
+    // Sort entries by date ascending and apply those on/after anchor.date
+    const sortedEntries = entries
+      .filter((e) => e.date >= anchor.date)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    for (const e of sortedEntries) {
+      runningBalance += e.kind === 'INCOME' ? e.amount : -e.amount
+    }
+  } else {
+    // No explicit opening balance — start from 0 and apply all prior entries
+    runningBalance = 0
+    source = 'carryover'
+    const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date))
+    for (const e of sortedEntries) {
+      runningBalance += e.kind === 'INCOME' ? e.amount : -e.amount
+    }
+    // Source date = the earliest entry date (the first day with activity)
+    if (sortedEntries.length > 0) {
+      sourceDate = sortedEntries[0].date
+    }
+  }
+
+  return { amount: runningBalance, source, sourceDate }
 }
 
 // GET /api/report?date=YYYY-MM-DD
 export async function GET(req: NextRequest) {
+  const t0 = Date.now()
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -114,7 +128,6 @@ export async function GET(req: NextRequest) {
   const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
   const openingBalance = openingInfo.amount
 
-  // Categorize expense entries into sub-sections
   const expensesEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'EXPENSES')
   const paymentsEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'PAYMENTS')
   const depositsEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'DEPOSITS')
@@ -130,18 +143,13 @@ export async function GET(req: NextRequest) {
   const cashInHand = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
 
   const calculatedClosing = openingBalance + totalIncome - totalExpense
-
   const leftTotal = openingBalance + totalIncome
-  // Right side: Expenses + Payments + Deposits + Cash in Hand (+ Cash Shortage if any)
   const rightTotal = totalExpense + cashInHand
   const difference = leftTotal - rightTotal
-  // Cash Shortage = when income side > expense side (cash is short)
-  // Excess Cash = when expense side > income side (extra cash)
   const cashShortage = difference > 0 ? difference : 0
   const excessCash = difference < 0 ? -difference : 0
   const isBalanced = Math.abs(difference) < 0.005
 
-  // Collect distinct creators for "Prepared by"
   const creators = new Map<string, { name: string | null; email: string }>()
   for (const e of entries) {
     if (e.creator) {
@@ -160,7 +168,6 @@ export async function GET(req: NextRequest) {
     openingSourceDate: openingInfo.sourceDate ?? null,
     incomeEntries,
     expenseEntries,
-    // sub-sections on expense side
     expensesEntries,
     paymentsEntries,
     depositsEntries,
@@ -179,5 +186,6 @@ export async function GET(req: NextRequest) {
     rightTotal,
     difference,
     isBalanced,
+    _ms: Date.now() - t0,
   })
 }
