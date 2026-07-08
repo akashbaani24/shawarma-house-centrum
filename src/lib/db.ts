@@ -7,26 +7,18 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   // DATABASE_URL holds the Turso libsql:// URL for the actual connection.
+  // If not set or not a libsql:// URL, fall back to the known Turso endpoint.
   // (The Prisma schema uses a literal file: URL for engine validation, so
   // DATABASE_URL is free to be a libsql:// URL for the adapter.)
-  const url = process.env.DATABASE_URL
-  if (!url) {
-    throw new Error('DATABASE_URL is not set')
-  }
+  const url =
+    process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('libsql://')
+      ? process.env.DATABASE_URL
+      : 'libsql://sh-akash9090.aws-ap-south-1.turso.io'
 
-  // Turso / libsql connection — use the PrismaLibSql adapter
-  if (url.startsWith('libsql://') || url.startsWith('file:libsql:')) {
-    const authToken = process.env.TURSO_AUTH_TOKEN
-    // v6 adapter API: pass a config object { url, authToken }
-    const adapter = new PrismaLibSQL({ url, authToken })
-    return new PrismaClient({ adapter })
-  }
-
-  // Fallback: local SQLite file (for local dev without Turso)
-  return new PrismaClient({
-    datasources: { db: { url } },
-    log: process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
-  })
+  const authToken = process.env.TURSO_AUTH_TOKEN
+  // v6 adapter API: pass a config object { url, authToken }
+  const adapter = new PrismaLibSQL({ url, authToken })
+  return new PrismaClient({ adapter })
 }
 
 // Lazy initialization via Proxy — prevents build-time failures when env vars
