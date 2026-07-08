@@ -19,21 +19,62 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   entries      Entry[]
+  entryTypes   EntryType[]
+  openingBalances OpeningBalance[]
+  denominations   Denomination[]
+}
+
+model EntryType {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  kind      String   // "INCOME" | "EXPENSE"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name, kind])
+  @@index([userId, kind])
 }
 
 model Entry {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  section     String   // RECEIPTS | SALES | DENOMINATION | EXPENSES | ADVANCES | PAYMENTS | DEPOSITS
-  particulars String   // label / denomination value as string
-  amount      Float    @default(0)
-  count       Int?     // for denomination only
-  date        String   // YYYY-MM-DD
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  typeId    String?
+  kind      String   // "INCOME" | "EXPENSE"
+  category  String   // denormalized type name (preserves history if type deleted)
+  amount    Float
+  note      String?
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
 
-  @@unique([userId, section, particulars, date])
   @@index([userId, date])
-  @@index([userId, section, date])
+  @@index([userId, kind, date])
+}
+
+model OpeningBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Denomination {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         String   // YYYY-MM-DD
+  denomination Int      // 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1
+  count        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, date, denomination])
+  @@index([userId, date])
 }

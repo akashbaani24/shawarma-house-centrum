@@ -31,6 +31,34 @@ export async function POST(req: NextRequest) {
         password: hashed,
         name: nm || null,
         businessName: biz,
+        // seed default entry types
+        entryTypes: {
+          create: [
+            // Default income types
+            { name: 'Salary', kind: 'INCOME' },
+            { name: 'Business', kind: 'INCOME' },
+            { name: 'Freelance', kind: 'INCOME' },
+            { name: 'Sales - Cash', kind: 'INCOME' },
+            { name: 'Sales - Bkash', kind: 'INCOME' },
+            { name: 'Sales - Card', kind: 'INCOME' },
+            { name: 'Received from Partner', kind: 'INCOME' },
+            { name: 'Miscellaneous Income', kind: 'INCOME' },
+            // Default expense types
+            { name: 'Vendor Bill', kind: 'EXPENSE' },
+            { name: 'Out Purchase', kind: 'EXPENSE' },
+            { name: 'Conveyance', kind: 'EXPENSE' },
+            { name: 'Delivery Charge', kind: 'EXPENSE' },
+            { name: 'Food', kind: 'EXPENSE' },
+            { name: 'Rent', kind: 'EXPENSE' },
+            { name: 'Utilities', kind: 'EXPENSE' },
+            { name: 'Mobile Recharge', kind: 'EXPENSE' },
+            { name: 'Office Expense', kind: 'EXPENSE' },
+            { name: 'Entertainment', kind: 'EXPENSE' },
+            { name: 'Payment to Partner', kind: 'EXPENSE' },
+            { name: 'Bank Deposit', kind: 'EXPENSE' },
+            { name: 'Other Expense', kind: 'EXPENSE' },
+          ],
+        },
       },
       select: { id: true, email: true, name: true, businessName: true },
     })

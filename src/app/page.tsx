@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import AuthScreen from '@/components/auth-screen'
-import Dashboard from '@/components/dashboard'
+import AppShell from '@/components/app-shell'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
@@ -11,7 +11,7 @@ export default async function Home() {
   }
 
   return (
-    <Dashboard
+    <AppShell
       user={{
         id: session.user.id,
         email: session.user.email,
