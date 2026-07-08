@@ -15,6 +15,7 @@ import {
   X,
   Users,
   AlertTriangle,
+  Landmark,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -23,6 +24,7 @@ import OpeningBalanceView from '@/components/views/opening-balance-view'
 import DailyReportView from '@/components/views/daily-report-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
+import BankAccountsView from '@/components/views/bank-accounts-view'
 
 export type ViewKey =
   | 'dashboard'
@@ -33,6 +35,7 @@ export type ViewKey =
   | 'report'
   | 'users'
   | 'reset'
+  | 'bank-accounts'
 
 interface NavItem {
   key: ViewKey
@@ -46,6 +49,7 @@ const NAV: NavItem[] = [
   { key: 'income', label: 'Income Entry', icon: ArrowUpCircle },
   { key: 'expense', label: 'Expense Entry', icon: ArrowDownCircle },
   { key: 'types', label: 'Manage Types', icon: Tags },
+  { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
   { key: 'report', label: 'Daily Report', icon: FileText },
   { key: 'users', label: 'Manage Users', icon: Users, adminOnly: true },
@@ -168,6 +172,7 @@ export default function AppShell({
             {view === 'expense' && <EntryView kind="EXPENSE" />}
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
+            {view === 'bank-accounts' && <BankAccountsView />}
             {view === 'report' && <DailyReportView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'reset' && isAdmin && <ResetDataView />}

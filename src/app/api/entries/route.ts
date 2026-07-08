@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
   const entries = await db.entry.findMany({
     where,
     orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-    include: { creator: { select: { name: true, email: true } } },
+    include: {
+      creator: { select: { name: true, email: true } },
+      bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
+    },
   })
   return NextResponse.json({ entries })
 }
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json()
-    const { kind, typeId, category, amount, note, date } = body ?? {}
+    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId } = body ?? {}
 
     if (kind !== 'INCOME' && kind !== 'EXPENSE') {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
@@ -51,6 +54,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
     }
 
+    // Validate payment method
+    const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK']
+    const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
+
     // Validate type if typeId provided
     let finalTypeId: string | null = null
     if (typeId) {
@@ -58,6 +65,13 @@ export async function POST(req: NextRequest) {
       if (type && type.kind === kind) {
         finalTypeId = typeId
       }
+    }
+
+    // Validate bank account if provided
+    let finalBankAccountId: string | null = null
+    if (bankAccountId && (method === 'BANK' || method === 'MOBILE_BANK')) {
+      const acct = await db.bankAccount.findUnique({ where: { id: bankAccountId } })
+      if (acct) finalBankAccountId = bankAccountId
     }
 
     const entry = await db.entry.create({
@@ -69,6 +83,8 @@ export async function POST(req: NextRequest) {
         amount: Math.round(amt * 100) / 100,
         note: note?.trim() || null,
         date,
+        paymentMethod: method,
+        bankAccountId: finalBankAccountId,
       },
     })
     return NextResponse.json({ entry }, { status: 201 })

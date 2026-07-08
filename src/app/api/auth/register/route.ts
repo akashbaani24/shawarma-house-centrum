@@ -10,6 +10,7 @@ export const ALL_RIGHTS = [
   'types',
   'opening',
   'report',
+  'bank-accounts',
 ] as const
 
 export async function POST(req: NextRequest) {

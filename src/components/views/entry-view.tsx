@@ -50,7 +50,24 @@ interface EntryItem {
   amount: number
   note: string | null
   date: string
+  paymentMethod?: string
+  bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null
 }
+
+interface BankAccountItem {
+  id: string
+  bankName: string
+  accountName: string
+  accountNumber: string
+  isActive: boolean
+}
+
+const PAYMENT_METHODS = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CARD', label: 'Card' },
+  { value: 'BANK', label: 'Bank' },
+  { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
+]
 
 export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
   const isIncome = kind === 'INCOME'
@@ -58,6 +75,7 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
 
   const [types, setTypes] = useState<TypeItem[]>([])
   const [entries, setEntries] = useState<EntryItem[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([])
   const [loadingTypes, setLoadingTypes] = useState(true)
   const [loadingEntries, setLoadingEntries] = useState(true)
 
@@ -65,6 +83,8 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [date, setDate] = useState(todayStr())
+  const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
+  const [bankAccountId, setBankAccountId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
 
   const loadTypes = useCallback(async () => {
@@ -96,10 +116,30 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
     }
   }, [kind])
 
+  const loadBankAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bank-accounts', { cache: 'no-store' })
+      const d = await res.json()
+      if (res.ok) setBankAccounts(d.bankAccounts)
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     loadTypes()
     loadEntries()
-  }, [loadTypes, loadEntries])
+    loadBankAccounts()
+  }, [loadTypes, loadEntries, loadBankAccounts])
+
+  // Reset bank account when method changes away from BANK/MOBILE_BANK
+  useEffect(() => {
+    if (paymentMethod !== 'BANK' && paymentMethod !== 'MOBILE_BANK') {
+      setBankAccountId('')
+    }
+  }, [paymentMethod])
+
+  const needsBankAccount = paymentMethod === 'BANK' || paymentMethod === 'MOBILE_BANK'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,6 +165,8 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
           amount: amt,
           note,
           date,
+          paymentMethod,
+          bankAccountId: needsBankAccount ? bankAccountId : undefined,
         }),
       })
       const d = await res.json()
@@ -231,6 +273,48 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
               </div>
 
               <div>
+                <Label className="mb-1.5 block">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {needsBankAccount && (
+                <div>
+                  <Label className="mb-1.5 block">
+                    {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : 'Bank Account'}
+                  </Label>
+                  {bankAccounts.filter((a) => a.isActive).length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        No active bank accounts. Please add one in Bank Accounts first.
+                      </p>
+                    </div>
+                  ) : (
+                    <Select value={bankAccountId} onValueChange={setBankAccountId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Select ${paymentMethod === 'MOBILE_BANK' ? 'mobile account' : 'bank account'}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bankAccounts.filter((a) => a.isActive).map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.bankName} — {a.accountName} ({a.accountNumber})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              <div>
                 <Label htmlFor="note" className="mb-1.5 block">Note (optional)</Label>
                 <Textarea
                   id="note"
@@ -289,6 +373,12 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
                       <div className="text-xs text-neutral-500 mt-0.5">
                         <span className="font-medium">{e.category}</span>
                         <span className="text-neutral-400"> · {e.date}</span>
+                        {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                          <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                            {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}
+                            {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                          </span>
+                        )}
                       </div>
                       {e.note && <div className="text-xs text-neutral-400 mt-0.5 truncate">{e.note}</div>}
                     </div>

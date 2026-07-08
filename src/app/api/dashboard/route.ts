@@ -23,12 +23,18 @@ export async function GET(_req: NextRequest) {
   const [todayEntries, recentEntries, openingOB] = await Promise.all([
     db.entry.findMany({
       where: { date: today },
-      include: { creator: { select: { name: true, email: true } } },
+      include: {
+        creator: { select: { name: true, email: true } },
+        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
+      },
     }),
     db.entry.findMany({
       orderBy: [{ createdAt: 'desc' }],
       take: 8,
-      include: { creator: { select: { name: true, email: true } } },
+      include: {
+        creator: { select: { name: true, email: true } },
+        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
+      },
     }),
     db.openingBalance.findUnique({ where: { date: today } }),
   ])

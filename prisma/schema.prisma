@@ -25,6 +25,24 @@ model User {
   createdOpeningBalances OpeningBalance[]
   createdDenominations   Denomination[]
   createdEntryTypes      EntryType[]
+  createdBankAccounts    BankAccount[]
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  createdById   String?
+  creator       User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  bankName      String   // e.g. "EBL", "City Bank"
+  accountName   String   // e.g. "Eventrum Main"
+  accountNumber String   // e.g. "1234567890"
+  branch        String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  entries       Entry[]
+
+  @@index([createdById])
 }
 
 model EntryType {
@@ -39,20 +57,24 @@ model EntryType {
 }
 
 model Entry {
-  id          String   @id @default(cuid())
-  createdById String?
-  creator     User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  typeId      String?
-  kind        String   // "INCOME" | "EXPENSE"
-  category    String
-  amount      Float
-  note        String?
-  date        String   // YYYY-MM-DD
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  createdById    String?
+  creator        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  typeId         String?
+  kind           String   // "INCOME" | "EXPENSE"
+  category       String
+  amount         Float
+  note           String?
+  date           String   // YYYY-MM-DD
+  paymentMethod  String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK
+  bankAccountId  String?
+  bankAccount    BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
 
   @@index([date])
   @@index([kind, date])
   @@index([createdById])
+  @@index([paymentMethod])
 }
 
 model OpeningBalance {

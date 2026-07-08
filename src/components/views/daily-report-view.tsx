@@ -62,8 +62,8 @@ interface ReportData {
   openingBalance: number
   openingSource: string
   openingSourceDate: string | null
-  incomeEntries: { id: string; category: string; amount: number; note: string | null }[]
-  expenseEntries: { id: string; category: string; amount: number; note: string | null }[]
+  incomeEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  expenseEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   totalIncome: number
   totalExpense: number
   denominations: Record<number, number>
@@ -341,6 +341,11 @@ export default function DailyReportView() {
                           <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                             <TableCell className="py-1 px-2">
                               {e.category}
+                              {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                </span>
+                              )}
                               {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
@@ -433,6 +438,11 @@ export default function DailyReportView() {
                           <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                             <TableCell className="py-1 px-2">
                               {e.category}
+                              {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                </span>
+                              )}
                               {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>

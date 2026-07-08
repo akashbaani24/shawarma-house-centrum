@@ -70,7 +70,10 @@ export async function GET(req: NextRequest) {
   const [entries, denomRows, openingInfo] = await Promise.all([
     db.entry.findMany({
       where: { date },
-      include: { creator: { select: { name: true, email: true } } },
+      include: {
+        creator: { select: { name: true, email: true } },
+        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
+      },
     }),
     db.denomination.findMany({ where: { date } }),
     computeOpeningBalance(date),

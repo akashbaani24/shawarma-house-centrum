@@ -38,6 +38,7 @@ const ALL_RIGHTS = [
   { key: 'income', label: 'Income Entry' },
   { key: 'expense', label: 'Expense Entry' },
   { key: 'types', label: 'Manage Types' },
+  { key: 'bank-accounts', label: 'Bank Accounts' },
   { key: 'opening', label: 'Opening Balance' },
   { key: 'report', label: 'Daily Report' },
 ]
