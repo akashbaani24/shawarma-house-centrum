@@ -251,12 +251,12 @@ export default function DailyReportView() {
             </div>
           </div>
 
-          {/* Balance check message (req 5) */}
-          <div className={`rounded-lg border p-3 flex items-start gap-3 print:hidden ${
+          {/* Balance check message (req 5) — visible in print too */}
+          <div className={`rounded-lg border p-3 flex items-start gap-3 ${
             liveIsBalanced
               ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30'
               : 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
-          }`}>
+          } print:border-black print:bg-white`}>
             {liveIsBalanced ? (
               <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             ) : (
@@ -538,10 +538,10 @@ export default function DailyReportView() {
                   </Table>
                 </div>
 
-                {/* Calculated closing (info) */}
-                <div className="border border-dashed border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-neutral-50 dark:bg-neutral-900/30 print:hidden">
-                  <div className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-800">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1">
+                {/* Calculated closing (info) — visible in print */}
+                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-neutral-50 dark:bg-neutral-900/30 print:border-black">
+                  <div className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-800 print:border-black">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1 print:text-black">
                       <Info className="h-3 w-3" /> Calculated Closing (auto)
                     </span>
                   </div>
@@ -647,8 +647,13 @@ export default function DailyReportView() {
               আগামী দিনের Opening Balance হবে: {CURRENCY}{fmt(report.calculatedClosing)} (আজকের Calculated Closing)
             </div>
 
+            {/* Approval / signature line — visible in print */}
+            <div className="mt-4 text-center text-[12px] font-medium text-emerald-700 dark:text-emerald-400 print:text-emerald-700">
+              সই --- অনুমোদিত ({CURRENCY}{fmt(liveLeftTotal)})
+            </div>
+
             {/* Prepared by footer (always visible, printable) */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-3 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
               <div>
                 <span className="text-neutral-500">Prepared by: </span>
                 <span className="font-semibold">

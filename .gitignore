@@ -58,3 +58,4 @@ server.log
 /scripts/*.log
 prisma-local.db
 prisma/prisma-local.db
+upload/

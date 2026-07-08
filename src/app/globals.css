@@ -123,21 +123,36 @@
 
 /* Print styles for daily report */
 @media print {
-  body {
-    background: white !important;
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
   }
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-size: 11px !important;
+  }
+  /* Hide everything not meant for print */
   .print\:hidden {
     display: none !important;
   }
+  /* Show print-only elements */
   .print\:block {
     display: block !important;
   }
-  .print\:bg-gray-100,
+  /* Force colors to print (for badges, totals backgrounds) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Section header backgrounds */
   .print\:bg-gray-200 {
     background: #e5e5e5 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
+  .print\:bg-gray-100 {
+    background: #f0f0f0 !important;
+  }
+  /* Borders */
   .print\:border-black {
     border-color: black !important;
   }
@@ -146,5 +161,14 @@
   }
   .print\:shadow-none {
     box-shadow: none !important;
+  }
+  .print\:text-black {
+    color: black !important;
+  }
+  /* Make the report sheet fill the page */
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
