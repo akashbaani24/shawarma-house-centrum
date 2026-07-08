@@ -8,12 +8,12 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  // This URL is read by Prisma's library engine. With the PrismaLibSql driver
-  // adapter (used in src/lib/db.ts), the adapter handles the actual Turso
-  // connection — but the engine still validates this URL. We point it at a
-  // local file so sqlite provider validation passes. The real Turso URL is
-  // read from TURSO_DATABASE_URL by src/lib/db.ts.
-  url = env("DATABASE_URL")
+  // Literal file: URL — Prisma's engine validates this at build/runtime.
+  // The actual Turso connection is handled by the PrismaLibSql adapter in
+  // src/lib/db.ts, which reads DATABASE_URL (the libsql:// URL) directly.
+  // Using a literal (not env()) means Prisma never reads DATABASE_URL here,
+  // so DATABASE_URL can safely be a libsql:// URL for the adapter.
+  url = "file:./prisma-local.db"
 }
 
 model User {
