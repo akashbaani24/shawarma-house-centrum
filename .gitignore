@@ -56,3 +56,5 @@ server.log
 # Local SQLite (replaced by Turso)
 /db/
 /scripts/*.log
+prisma-local.db
+prisma/prisma-local.db

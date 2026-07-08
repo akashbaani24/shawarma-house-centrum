@@ -4,7 +4,7 @@ import { createClient } from '@libsql/client'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 
-const url = process.env.DATABASE_URL
+const url = process.env.TURSO_DATABASE_URL
 const authToken = process.env.TURSO_AUTH_TOKEN
 const client = createClient({ url, authToken })
 
