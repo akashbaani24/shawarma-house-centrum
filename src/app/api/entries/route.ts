@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-// GET /api/entries?date=YYYY-MM-DD  -> entries for one day
-// GET /api/entries?kind=INCOME      -> all entries of a kind (recent 100)
+// GET /api/entries?date=YYYY-MM-DD          -> entries for one day
+// GET /api/entries?kind=INCOME              -> all entries of a kind (recent 100)
+// GET /api/entries?kind=EXPENSE&source=BRANCH -> expenses filtered by source
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -13,10 +14,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const date = searchParams.get('date')
   const kind = searchParams.get('kind')
+  const source = searchParams.get('source')
 
-  const where: { date?: string; kind?: string } = {}
+  const where: { date?: string; kind?: string; source?: string } = {}
   if (date) where.date = date
   if (kind && (kind === 'INCOME' || kind === 'EXPENSE')) where.kind = kind
+  if (source && (source === 'BRANCH' || source === 'OFFICE')) where.source = source
 
   const entries = await db.entry.findMany({
     where,
@@ -30,13 +33,14 @@ export async function GET(req: NextRequest) {
       note: true,
       date: true,
       paymentMethod: true,
+      source: true,
       bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
     },
   })
   return NextResponse.json({ entries })
 }
 
-// POST /api/entries  { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId }
+// POST /api/entries  { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source }
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json()
-    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId } = body ?? {}
+    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source } = body ?? {}
 
     if (kind !== 'INCOME' && kind !== 'EXPENSE') {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
@@ -63,6 +67,9 @@ export async function POST(req: NextRequest) {
 
     const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK']
     const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
+
+    // source: BRANCH (default) or OFFICE
+    const src = source === 'OFFICE' ? 'OFFICE' : 'BRANCH'
 
     let finalTypeId: string | null = null
     if (typeId) {
@@ -88,6 +95,7 @@ export async function POST(req: NextRequest) {
         note: note?.trim() || null,
         date,
         paymentMethod: method,
+        source: src,
         bankAccountId: finalBankAccountId,
       },
     })

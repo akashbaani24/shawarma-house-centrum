@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from date must be before or equal to to date' }, { status: 400 })
   }
 
+  // Expense Details: includes BOTH branch + office expenses (with source label)
   const entries = await db.entry.findMany({
     where: { kind: 'EXPENSE', date: { gte: from, lte: to } },
     orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
       note: true,
       date: true,
       paymentMethod: true,
+      source: true,
       bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
       creator: { select: { name: true, email: true } },
       createdAt: true,
@@ -57,6 +59,13 @@ export async function GET(req: NextRequest) {
     byDate.set(e.date, (byDate.get(e.date) ?? 0) + e.amount)
   }
 
+  // Group by source (BRANCH / OFFICE)
+  const bySource = new Map<string, number>()
+  for (const e of entries) {
+    const s = e.source || 'BRANCH'
+    bySource.set(s, (bySource.get(s) ?? 0) + e.amount)
+  }
+
   const total = entries.reduce((s, e) => s + e.amount, 0)
 
   return NextResponse.json({
@@ -70,6 +79,9 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.amount - a.amount),
     byMethod: Array.from(byMethod.entries())
       .map(([method, amount]) => ({ method, amount }))
+      .sort((a, b) => b.amount - a.amount),
+    bySource: Array.from(bySource.entries())
+      .map(([source, amount]) => ({ source, amount }))
       .sort((a, b) => b.amount - a.amount),
     byDate: Array.from(byDate.entries())
       .map(([date, amount]) => ({ date, amount }))

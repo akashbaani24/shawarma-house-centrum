@@ -73,6 +73,7 @@ model Entry {
   note           String?
   date           String   // YYYY-MM-DD
   paymentMethod  String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK
+  source         String   @default("BRANCH") // BRANCH | OFFICE — BRANCH shows in Branch Daily Report, OFFICE only in Expense Details
   bankAccountId  String?
   bankAccount    BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())

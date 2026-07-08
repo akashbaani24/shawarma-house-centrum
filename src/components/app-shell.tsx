@@ -33,7 +33,8 @@ import BankAccountsView from '@/components/views/bank-accounts-view'
 export type ViewKey =
   | 'dashboard'
   | 'income'
-  | 'expense'
+  | 'expense-branch'
+  | 'expense-office'
   | 'types'
   | 'opening'
   | 'branch-report'
@@ -53,7 +54,8 @@ interface NavItem {
 const TOP_NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'income', label: 'Income Entry', icon: ArrowUpCircle },
-  { key: 'expense', label: 'Expense Entry', icon: ArrowDownCircle },
+  { key: 'expense-branch', label: 'Expense By Branch', icon: ArrowDownCircle },
+  { key: 'expense-office', label: 'Expense By Office', icon: ArrowDownCircle },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
@@ -86,10 +88,12 @@ function AppShellInner({
   const searchParams = useSearchParams()
   const isAdmin = user.role === 'ADMIN'
 
-  // Map old 'report' key to new 'branch-report' for backward compat with rights
-  const rightsNormalized = user.rights.includes('report') && !user.rights.includes('branch-report')
-    ? [...user.rights, 'branch-report']
-    : user.rights
+  // Backward compat: old 'report' → 'branch-report', old 'expense' → 'expense-branch'
+  const rightsNormalized = [
+    ...user.rights,
+    ...(user.rights.includes('report') && !user.rights.includes('branch-report') ? ['branch-report'] : []),
+    ...(user.rights.includes('expense') && !user.rights.includes('expense-branch') ? ['expense-branch'] : []),
+  ]
 
   const canSee = (item: NavItem) => {
     if (item.adminOnly) return isAdmin
@@ -104,8 +108,11 @@ function AppShellInner({
 
   // Read the current view from the URL query param
   const paramView = searchParams.get('view') as ViewKey | null
-  // Backward compat: 'report' → 'branch-report'
-  const normalizedParam = paramView === 'report' ? 'branch-report' : paramView
+  // Backward compat: old keys → new keys
+  const normalizedParam =
+    paramView === 'report' ? 'branch-report'
+    : paramView === 'expense' ? 'expense-branch'
+    : paramView
   const view: ViewKey =
     normalizedParam && allVisible.some((n) => n.key === normalizedParam)
       ? normalizedParam
@@ -269,7 +276,8 @@ function AppShellInner({
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
             {view === 'dashboard' && <DashboardView onNavigate={handleNav} />}
             {view === 'income' && <EntryView kind="INCOME" />}
-            {view === 'expense' && <EntryView kind="EXPENSE" />}
+            {view === 'expense-branch' && <EntryView kind="EXPENSE" source="BRANCH" title="Expense By Branch" />}
+            {view === 'expense-office' && <EntryView kind="EXPENSE" source="OFFICE" title="Expense By Office" />}
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
             {view === 'bank-accounts' && <BankAccountsView />}

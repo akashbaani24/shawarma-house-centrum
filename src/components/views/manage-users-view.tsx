@@ -36,7 +36,8 @@ import { toast } from 'sonner'
 const ALL_RIGHTS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'income', label: 'Income Entry' },
-  { key: 'expense', label: 'Expense Entry' },
+  { key: 'expense-branch', label: 'Expense By Branch' },
+  { key: 'expense-office', label: 'Expense By Office' },
   { key: 'types', label: 'Manage Types' },
   { key: 'bank-accounts', label: 'Bank Accounts' },
   { key: 'opening', label: 'Opening Balance' },

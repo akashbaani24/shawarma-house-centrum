@@ -69,7 +69,15 @@ const PAYMENT_METHODS = [
   { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
 ]
 
-export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
+export default function EntryView({
+  kind,
+  source = 'BRANCH',
+  title,
+}: {
+  kind: 'INCOME' | 'EXPENSE'
+  source?: 'BRANCH' | 'OFFICE'
+  title?: string
+}) {
   const isIncome = kind === 'INCOME'
   const accent = isIncome ? 'emerald' : 'rose'
 
@@ -106,7 +114,7 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
   const loadEntries = useCallback(async () => {
     setLoadingEntries(true)
     try {
-      const res = await fetch(`/api/entries?kind=${kind}`, { cache: 'no-store' })
+      const res = await fetch(`/api/entries?kind=${kind}&source=${source}`, { cache: 'no-store' })
       const d = await res.json()
       if (res.ok) setEntries(d.entries)
     } catch {
@@ -114,7 +122,7 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
     } finally {
       setLoadingEntries(false)
     }
-  }, [kind])
+  }, [kind, source])
 
   const loadBankAccounts = useCallback(async () => {
     try {
@@ -166,6 +174,7 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
           note,
           date,
           paymentMethod,
+          source,
           bankAccountId: needsBankAccount ? bankAccountId : undefined,
         }),
       })
@@ -206,7 +215,7 @@ export default function EntryView({ kind }: { kind: 'INCOME' | 'EXPENSE' }) {
           ) : (
             <ArrowDownCircle className="h-6 w-6 text-rose-600" />
           )}
-          {isIncome ? 'Income' : 'Expense'} Entry
+          {title ?? `${isIncome ? 'Income' : 'Expense'} Entry`}
         </h1>
         <p className="text-sm text-neutral-500 mt-1">
           Record a new {isIncome ? 'income' : 'expense'} transaction

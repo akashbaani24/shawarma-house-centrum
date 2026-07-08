@@ -6,7 +6,8 @@ import { db } from '@/lib/db'
 export const ALL_RIGHTS = [
   'dashboard',
   'income',
-  'expense',
+  'expense-branch',
+  'expense-office',
   'types',
   'opening',
   'branch-report',

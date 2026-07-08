@@ -50,7 +50,7 @@ async function computeOpeningBalance(
       take: 1,
     }),
     db.entry.findMany({
-      where: { date: { lt: date } },
+      where: { date: { lt: date }, source: 'BRANCH' },
       select: { date: true, kind: true, amount: true },
     }),
   ])
@@ -111,8 +111,9 @@ export async function GET(req: NextRequest) {
   }
 
   const [entries, denomRows, openingInfo] = await Promise.all([
+    // Branch Daily Report: exclude OFFICE entries (they only show in Expense Details)
     db.entry.findMany({
-      where: { date },
+      where: { date, source: 'BRANCH' },
       include: {
         creator: { select: { name: true, email: true } },
         bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },

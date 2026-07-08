@@ -64,6 +64,7 @@ interface EntryItem {
   note: string | null
   date: string
   paymentMethod: string
+  source: string
   bankAccount: { bankName: string; accountName: string; accountNumber: string } | null
   creator: { name: string | null; email: string } | null
   createdAt: string
@@ -77,6 +78,7 @@ interface ReportData {
   total: number
   byCategory: { category: string; amount: number }[]
   byMethod: { method: string; amount: number }[]
+  bySource: { source: string; amount: number }[]
   byDate: { date: string; amount: number }[]
 }
 
@@ -312,6 +314,7 @@ export default function ExpenseDetailsView() {
                   <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Date</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Source</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Method</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Note</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
@@ -320,7 +323,7 @@ export default function ExpenseDetailsView() {
                 <TableBody>
                   {report.entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
+                      <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
                         No expense entries in this period
                       </TableCell>
                     </TableRow>
@@ -329,6 +332,15 @@ export default function ExpenseDetailsView() {
                       <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                         <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
                         <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
+                        <TableCell className="py-1 px-2">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                            e.source === 'OFFICE'
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                          }`}>
+                            {e.source === 'OFFICE' ? 'Office' : 'Branch'}
+                          </span>
+                        </TableCell>
                         <TableCell className="py-1 px-2">
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
                             e.paymentMethod === 'CASH'
@@ -347,7 +359,7 @@ export default function ExpenseDetailsView() {
                     ))
                   )}
                   <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
-                    <TableCell colSpan={4} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
+                    <TableCell colSpan={5} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
                     <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                   </TableRow>
                 </TableBody>
