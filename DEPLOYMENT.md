@@ -27,6 +27,18 @@ Set these in your Vercel project settings (Settings → Environment Variables):
 3. ✅ Created all tables on Turso via `scripts/migrate-turso.js`
 4. ✅ Seeded admin user + 21 default entry types via `scripts/seed-turso.js`
 
+## GitHub Actions (optional CI)
+
+The workflow file `.github/workflows/build.yml` could not be pushed automatically (the deploy token lacked the `workflow` scope). To add it manually:
+
+1. Go to the repo on GitHub → **Actions** tab → **set up a workflow yourself**
+2. Paste the contents of `.github/workflows/build.yml` (kept locally in the repo)
+3. Commit the file (the web UI does not require the `workflow` token scope)
+4. Add these repository secrets (Settings → Secrets and variables → Actions):
+   - `DATABASE_URL`, `TURSO_AUTH_TOKEN`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+
+The workflow runs lint + build on every push to `main`.
+
 ## Auto-Deploy Setup (one-time)
 
 ### Step 1: Push to GitHub
