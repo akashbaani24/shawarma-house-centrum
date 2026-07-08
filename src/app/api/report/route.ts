@@ -5,6 +5,35 @@ import { db } from '@/lib/db'
 
 const VALID_DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
 
+// Expense sub-section classification based on category name.
+// Returns: "EXPENSES" | "PAYMENTS" | "DEPOSITS"
+function classifyExpenseCategory(category: string): 'EXPENSES' | 'PAYMENTS' | 'DEPOSITS' {
+  const c = category.toLowerCase().trim()
+  // Deposit-related categories → Deposits section
+  if (
+    c.includes('deposit') ||
+    c.includes('bank deposit') ||
+    c.includes('bank account') ||
+    c.includes('card sales') ||
+    c.includes('digital wallet') ||
+    c.includes('bkash no') ||
+    c === 'bank deposit'
+  ) {
+    return 'DEPOSITS'
+  }
+  // Payment-to-someone categories → Payments section
+  if (
+    c.startsWith('payment to') ||
+    c.startsWith('paid to') ||
+    c.includes('payment to partner') ||
+    c.includes('advance')
+  ) {
+    return 'PAYMENTS'
+  }
+  // Everything else → Expenses section
+  return 'EXPENSES'
+}
+
 function shiftDate(dateStr: string, deltaDays: number): string {
   const d = new Date(dateStr + 'T00:00:00')
   d.setDate(d.getDate() + deltaDays)
@@ -85,6 +114,14 @@ export async function GET(req: NextRequest) {
   const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
   const openingBalance = openingInfo.amount
 
+  // Categorize expense entries into sub-sections
+  const expensesEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'EXPENSES')
+  const paymentsEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'PAYMENTS')
+  const depositsEntries = expenseEntries.filter((e) => classifyExpenseCategory(e.category) === 'DEPOSITS')
+  const totalExpenses = expensesEntries.reduce((s, e) => s + e.amount, 0)
+  const totalPayments = paymentsEntries.reduce((s, e) => s + e.amount, 0)
+  const totalDeposits = depositsEntries.reduce((s, e) => s + e.amount, 0)
+
   const denomMap: Record<number, number> = {}
   for (const d of VALID_DENOMS) denomMap[d] = 0
   for (const r of denomRows) {
@@ -95,8 +132,13 @@ export async function GET(req: NextRequest) {
   const calculatedClosing = openingBalance + totalIncome - totalExpense
 
   const leftTotal = openingBalance + totalIncome
+  // Right side: Expenses + Payments + Deposits + Cash in Hand (+ Cash Shortage if any)
   const rightTotal = totalExpense + cashInHand
   const difference = leftTotal - rightTotal
+  // Cash Shortage = when income side > expense side (cash is short)
+  // Excess Cash = when expense side > income side (extra cash)
+  const cashShortage = difference > 0 ? difference : 0
+  const excessCash = difference < 0 ? -difference : 0
   const isBalanced = Math.abs(difference) < 0.005
 
   // Collect distinct creators for "Prepared by"
@@ -118,8 +160,17 @@ export async function GET(req: NextRequest) {
     openingSourceDate: openingInfo.sourceDate ?? null,
     incomeEntries,
     expenseEntries,
+    // sub-sections on expense side
+    expensesEntries,
+    paymentsEntries,
+    depositsEntries,
     totalIncome,
     totalExpense,
+    totalExpenses,
+    totalPayments,
+    totalDeposits,
+    cashShortage,
+    excessCash,
     denominations: denomMap,
     validDenoms: VALID_DENOMS,
     cashInHand,

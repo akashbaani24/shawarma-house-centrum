@@ -64,8 +64,16 @@ interface ReportData {
   openingSourceDate: string | null
   incomeEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   expenseEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  expensesEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  paymentsEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  depositsEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   totalIncome: number
   totalExpense: number
+  totalExpenses: number
+  totalPayments: number
+  totalDeposits: number
+  cashShortage: number
+  excessCash: number
   denominations: Record<number, number>
   validDenoms: number[]
   cashInHand: number
@@ -411,30 +419,25 @@ export default function DailyReportView() {
                 </div>
               </div>
 
-              {/* RIGHT: Expense side */}
+              {/* RIGHT: Expense side — 4 sub-sections */}
               <div className="space-y-3">
+                {/* Sub-section: Expenses */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                      Expense / Payments
+                      Expenses
                     </span>
                   </div>
                   <Table className="text-[11px]">
-                    <TableHeader>
-                      <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Particulars</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
                     <TableBody>
-                      {report.expenseEntries.length === 0 ? (
+                      {report.expensesEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[11px]">
-                            No expense entries for this day
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                            No expense entries
                           </TableCell>
                         </TableRow>
                       ) : (
-                        report.expenseEntries.map((e) => (
+                        report.expensesEntries.map((e) => (
                           <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                             <TableCell className="py-1 px-2">
                               {e.category}
@@ -449,9 +452,87 @@ export default function DailyReportView() {
                           </TableRow>
                         ))
                       )}
-                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-bold text-right">Total Expense -</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.totalExpense)}</TableCell>
+                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
+                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Expenses -</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalExpenses)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Sub-section: Payments */}
+                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
+                  <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                      Payments
+                    </span>
+                  </div>
+                  <Table className="text-[11px]">
+                    <TableBody>
+                      {report.paymentsEntries.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                            No payment entries
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        report.paymentsEntries.map((e) => (
+                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2">
+                              {e.category}
+                              {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                </span>
+                              )}
+                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                            </TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
+                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Payments -</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalPayments)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Sub-section: Deposits */}
+                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
+                  <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                      Deposits
+                    </span>
+                  </div>
+                  <Table className="text-[11px]">
+                    <TableBody>
+                      {report.depositsEntries.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                            No deposit entries
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        report.depositsEntries.map((e) => (
+                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2">
+                              {e.category}
+                              {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                </span>
+                              )}
+                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                            </TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
+                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Deposits -</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalDeposits)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -481,29 +562,65 @@ export default function DailyReportView() {
             </div>
 
             {/* Totals row */}
+            {/* Detailed totals row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              {/* Left totals: Income side */}
               <div className="border-2 border-neutral-800 dark:border-neutral-200 print:border-black rounded-sm overflow-hidden">
                 <Table className="text-[11px]">
                   <TableBody>
-                    <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-b border-neutral-300 dark:border-neutral-700 print:border-black">
-                      <TableCell className="py-1.5 px-2 font-bold">
-                        Income Side Total (Opening + Income)
-                      </TableCell>
-                      <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold w-28">
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">Opening Balance</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums w-28">{fmt(report.openingBalance)}</TableCell>
+                    </TableRow>
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">+ Total Income</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalIncome)}</TableCell>
+                    </TableRow>
+                    {report.excessCash > 0 && (
+                      <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                        <TableCell className="py-1 px-2 font-medium">+ Excess Cash</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.excessCash)}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
+                      <TableCell className="py-1.5 px-2 font-bold">Income Side Total -</TableCell>
+                      <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
                         {fmt(liveLeftTotal)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Right totals: Expense side breakdown */}
               <div className="border-2 border-neutral-800 dark:border-neutral-200 print:border-black rounded-sm overflow-hidden">
                 <Table className="text-[11px]">
                   <TableBody>
-                    <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-b border-neutral-300 dark:border-neutral-700 print:border-black">
-                      <TableCell className="py-1.5 px-2 font-bold">
-                        Expense Side Total (Expense + Cash in Hand)
-                      </TableCell>
-                      <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold w-28">
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">Total Expenses</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums w-28">{fmt(report.totalExpenses)}</TableCell>
+                    </TableRow>
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">+ Total Payments</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalPayments)}</TableCell>
+                    </TableRow>
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">+ Total Deposits</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalDeposits)}</TableCell>
+                    </TableRow>
+                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                      <TableCell className="py-1 px-2 font-medium">+ Cash in Hand</TableCell>
+                      <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(liveDenomTotal)}</TableCell>
+                    </TableRow>
+                    {report.cashShortage > 0 && (
+                      <TableRow className="border-amber-300 dark:border-amber-800 print:border-black bg-amber-50 dark:bg-amber-950/20">
+                        <TableCell className="py-1 px-2 font-medium text-amber-700 dark:text-amber-400">+ Cash Shortage</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums text-amber-700 dark:text-amber-400">{fmt(report.cashShortage)}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
+                      <TableCell className="py-1.5 px-2 font-bold">Expense Side Total -</TableCell>
+                      <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
                         {fmt(liveRightTotal)}
                       </TableCell>
                     </TableRow>
