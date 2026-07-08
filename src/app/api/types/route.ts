@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const kind = searchParams.get('kind')
 
   const where: { kind?: string } = {}
-  if (kind && (kind === 'INCOME' || kind === 'EXPENSE')) where.kind = kind
+  if (kind && (kind === 'INCOME' || kind === 'EXPENSE' || kind === 'INVEST')) where.kind = kind
 
   const types = await db.entryType.findMany({
     where,
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
-    if (kind !== 'INCOME' && kind !== 'EXPENSE') {
-      return NextResponse.json({ error: 'Kind must be INCOME or EXPENSE' }, { status: 400 })
+    if (kind !== 'INCOME' && kind !== 'EXPENSE' && kind !== 'INVEST') {
+      return NextResponse.json({ error: 'Kind must be INCOME, EXPENSE, or INVEST' }, { status: 400 })
     }
 
     const type = await db.entryType.create({

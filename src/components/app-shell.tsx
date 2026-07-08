@@ -19,6 +19,7 @@ import {
   Landmark,
   ChevronDown,
   Receipt,
+  TrendingUp,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -26,6 +27,7 @@ import ManageTypesView from '@/components/views/manage-types-view'
 import OpeningBalanceView from '@/components/views/opening-balance-view'
 import DailyReportView from '@/components/views/daily-report-view'
 import ExpenseDetailsView from '@/components/views/expense-details-view'
+import InvestmentReportView from '@/components/views/investment-report-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -35,10 +37,12 @@ export type ViewKey =
   | 'income'
   | 'expense-branch'
   | 'expense-office'
+  | 'invest'
   | 'types'
   | 'opening'
   | 'branch-report'
   | 'expense-details'
+  | 'investment-report'
   | 'users'
   | 'reset'
   | 'bank-accounts'
@@ -56,6 +60,7 @@ const TOP_NAV: NavItem[] = [
   { key: 'income', label: 'Income Entry', icon: ArrowUpCircle },
   { key: 'expense-branch', label: 'Expense By Branch', icon: ArrowDownCircle },
   { key: 'expense-office', label: 'Expense By Office', icon: ArrowDownCircle },
+  { key: 'invest', label: 'Invest Entry', icon: TrendingUp },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
@@ -65,6 +70,7 @@ const TOP_NAV: NavItem[] = [
 const REPORT_NAV: NavItem[] = [
   { key: 'branch-report', label: 'Branch Daily Report', icon: FileText },
   { key: 'expense-details', label: 'Expense Details', icon: Receipt },
+  { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -278,11 +284,13 @@ function AppShellInner({
             {view === 'income' && <EntryView kind="INCOME" />}
             {view === 'expense-branch' && <EntryView kind="EXPENSE" source="BRANCH" title="Expense By Branch" />}
             {view === 'expense-office' && <EntryView kind="EXPENSE" source="OFFICE" title="Expense By Office" />}
+            {view === 'invest' && <EntryView kind="INVEST" source="BRANCH" title="Invest Entry" accentColor="amber" />}
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
             {view === 'bank-accounts' && <BankAccountsView />}
             {view === 'branch-report' && <DailyReportView />}
             {view === 'expense-details' && <ExpenseDetailsView />}
+            {view === 'investment-report' && <InvestmentReportView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'reset' && isAdmin && <ResetDataView />}
           </div>

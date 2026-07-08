@@ -8,10 +8,12 @@ export const ALL_RIGHTS = [
   'income',
   'expense-branch',
   'expense-office',
+  'invest',
   'types',
   'opening',
   'branch-report',
   'expense-details',
+  'investment-report',
   'bank-accounts',
 ] as const
 

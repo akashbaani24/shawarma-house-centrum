@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const where: { date?: string; kind?: string; source?: string } = {}
   if (date) where.date = date
-  if (kind && (kind === 'INCOME' || kind === 'EXPENSE')) where.kind = kind
+  if (kind && (kind === 'INCOME' || kind === 'EXPENSE' || kind === 'INVEST')) where.kind = kind
   if (source && (source === 'BRANCH' || source === 'OFFICE')) where.source = source
 
   const entries = await db.entry.findMany({
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source } = body ?? {}
 
-    if (kind !== 'INCOME' && kind !== 'EXPENSE') {
+    if (kind !== 'INCOME' && kind !== 'EXPENSE' && kind !== 'INVEST') {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
     }
     const amt = typeof amount === 'number' ? amount : parseFloat(amount)

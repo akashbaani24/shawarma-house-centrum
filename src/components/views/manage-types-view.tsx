@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Loader2, Tags, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
+import { Plus, Trash2, Loader2, Tags, ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TypeItem {
@@ -20,7 +20,7 @@ export default function ManageTypesView() {
   const [types, setTypes] = useState<TypeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
-  const [newKind, setNewKind] = useState<'INCOME' | 'EXPENSE'>('INCOME')
+  const [newKind, setNewKind] = useState<'INCOME' | 'EXPENSE' | 'INVEST'>('INCOME')
   const [submitting, setSubmitting] = useState(false)
 
   const load = useCallback(async () => {
@@ -83,13 +83,15 @@ export default function ManageTypesView() {
 
   const incomeTypes = types.filter((t) => t.kind === 'INCOME')
   const expenseTypes = types.filter((t) => t.kind === 'EXPENSE')
+  const investTypes = types.filter((t) => t.kind === 'INVEST')
 
-  const renderList = (list: TypeItem[], kind: 'INCOME' | 'EXPENSE') => {
+  const renderList = (list: TypeItem[], kind: 'INCOME' | 'EXPENSE' | 'INVEST') => {
     const isIncome = kind === 'INCOME'
+    const label = kind === 'INCOME' ? 'income' : kind === 'EXPENSE' ? 'expense' : 'investment'
     if (list.length === 0) {
       return (
         <div className="py-10 text-center text-sm text-neutral-500">
-          No {isIncome ? 'income' : 'expense'} types yet.
+          No {label} types yet.
         </div>
       )
     }
@@ -98,8 +100,10 @@ export default function ManageTypesView() {
         {list.map((t) => (
           <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2 group">
             <div className="flex items-center gap-2">
-              {isIncome ? (
+              {kind === 'INCOME' ? (
                 <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
+              ) : kind === 'INVEST' ? (
+                <TrendingUp className="h-4 w-4 text-amber-600" />
               ) : (
                 <ArrowDownCircle className="h-4 w-4 text-rose-600" />
               )}
@@ -141,13 +145,16 @@ export default function ManageTypesView() {
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
                 <Label className="mb-2 block">Kind</Label>
-                <Tabs value={newKind} onValueChange={(v) => setNewKind(v as 'INCOME' | 'EXPENSE')}>
-                  <TabsList className="grid grid-cols-2 w-full">
+                <Tabs value={newKind} onValueChange={(v) => setNewKind(v as 'INCOME' | 'EXPENSE' | 'INVEST')}>
+                  <TabsList className="grid grid-cols-3 w-full">
                     <TabsTrigger value="INCOME" className="data-[state=active]:text-emerald-600">
                       <ArrowUpCircle className="h-4 w-4 mr-1" /> Income
                     </TabsTrigger>
                     <TabsTrigger value="EXPENSE" className="data-[state=active]:text-rose-600">
                       <ArrowDownCircle className="h-4 w-4 mr-1" /> Expense
+                    </TabsTrigger>
+                    <TabsTrigger value="INVEST" className="data-[state=active]:text-amber-600">
+                      <TrendingUp className="h-4 w-4 mr-1" /> Invest
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -185,16 +192,20 @@ export default function ManageTypesView() {
               </div>
             ) : (
               <Tabs defaultValue="INCOME">
-                <TabsList className="grid grid-cols-2 w-full mb-4">
+                <TabsList className="grid grid-cols-3 w-full mb-4">
                   <TabsTrigger value="INCOME">
                     Income ({incomeTypes.length})
                   </TabsTrigger>
                   <TabsTrigger value="EXPENSE">
                     Expense ({expenseTypes.length})
                   </TabsTrigger>
+                  <TabsTrigger value="INVEST">
+                    Invest ({investTypes.length})
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="INCOME">{renderList(incomeTypes, 'INCOME')}</TabsContent>
                 <TabsContent value="EXPENSE">{renderList(expenseTypes, 'EXPENSE')}</TabsContent>
+                <TabsContent value="INVEST">{renderList(investTypes, 'INVEST')}</TabsContent>
               </Tabs>
             )}
           </CardContent>

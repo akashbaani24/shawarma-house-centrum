@@ -20,6 +20,7 @@ import {
   Trash2,
   Loader2,
   Tags,
+  TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -73,13 +74,15 @@ export default function EntryView({
   kind,
   source = 'BRANCH',
   title,
+  accentColor,
 }: {
-  kind: 'INCOME' | 'EXPENSE'
+  kind: 'INCOME' | 'EXPENSE' | 'INVEST'
   source?: 'BRANCH' | 'OFFICE'
   title?: string
+  accentColor?: 'emerald' | 'rose' | 'amber'
 }) {
   const isIncome = kind === 'INCOME'
-  const accent = isIncome ? 'emerald' : 'rose'
+  const accent = accentColor ?? (isIncome ? 'emerald' : 'rose')
 
   const [types, setTypes] = useState<TypeItem[]>([])
   const [entries, setEntries] = useState<EntryItem[]>([])
@@ -180,7 +183,7 @@ export default function EntryView({
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error || 'Failed to save')
-      toast.success(`${isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} added`)
+      toast.success(`${kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} added`)
       setAmount('')
       setNote('')
       loadEntries()
@@ -210,7 +213,9 @@ export default function EntryView({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          {isIncome ? (
+          {kind === 'INVEST' ? (
+            <TrendingUp className="h-6 w-6 text-amber-600" />
+          ) : isIncome ? (
             <ArrowUpCircle className="h-6 w-6 text-emerald-600" />
           ) : (
             <ArrowDownCircle className="h-6 w-6 text-rose-600" />
@@ -218,7 +223,7 @@ export default function EntryView({
           {title ?? `${isIncome ? 'Income' : 'Expense'} Entry`}
         </h1>
         <p className="text-sm text-neutral-500 mt-1">
-          Record a new {isIncome ? 'income' : 'expense'} transaction
+          Record a new {kind === 'INVEST' ? 'investment' : isIncome ? 'income' : 'expense'} transaction
         </p>
       </div>
 
@@ -338,12 +343,13 @@ export default function EntryView({
                 type="submit"
                 className="w-full"
                 disabled={submitting || types.length === 0}
-                variant={isIncome ? 'default' : 'destructive'}
+                variant={kind === 'INVEST' ? 'default' : isIncome ? 'default' : 'destructive'}
+                style={kind === 'INVEST' ? { backgroundColor: '#d97706' } : undefined}
               >
                 {submitting ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
                 ) : (
-                  <><Plus className="h-4 w-4 mr-2" /> Add {isIncome ? 'Income' : 'Expense'}</>
+                  <><Plus className="h-4 w-4 mr-2" /> Add {kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'}</>
                 )}
               </Button>
             </form>
