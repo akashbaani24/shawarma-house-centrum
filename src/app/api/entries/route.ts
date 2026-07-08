@@ -14,13 +14,14 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get('date')
   const kind = searchParams.get('kind')
 
-  const where: { userId: string; date?: string; kind?: string } = { userId: session.user.id }
+  const where: { date?: string; kind?: string } = {}
   if (date) where.date = date
   if (kind && (kind === 'INCOME' || kind === 'EXPENSE')) where.kind = kind
 
   const entries = await db.entry.findMany({
     where,
     orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    include: { creator: { select: { name: true, email: true } } },
   })
   return NextResponse.json({ entries })
 }
@@ -50,18 +51,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
     }
 
-    // Validate type ownership if typeId provided
+    // Validate type if typeId provided
     let finalTypeId: string | null = null
     if (typeId) {
       const type = await db.entryType.findUnique({ where: { id: typeId } })
-      if (type && type.userId === session.user.id && type.kind === kind) {
+      if (type && type.kind === kind) {
         finalTypeId = typeId
       }
     }
 
     const entry = await db.entry.create({
       data: {
-        userId: session.user.id,
+        createdById: session.user.id,
         typeId: finalTypeId,
         kind,
         category: cat,

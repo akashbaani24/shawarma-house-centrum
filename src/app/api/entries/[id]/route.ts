@@ -12,10 +12,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
   try {
     const { id } = await params
-    const existing = await db.entry.findUnique({ where: { id } })
-    if (!existing || existing.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
     await db.entry.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (e) {

@@ -17,6 +17,8 @@ export default async function Home() {
         email: session.user.email,
         name: session.user.name ?? null,
         businessName: session.user.businessName ?? 'Daily Report',
+        role: session.user.role ?? 'USER',
+        rights: session.user.rights ?? [],
       }}
     />
   )

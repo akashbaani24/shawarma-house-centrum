@@ -15,14 +15,15 @@ export async function GET(req: NextRequest) {
 
   if (date) {
     const ob = await db.openingBalance.findUnique({
-      where: { userId_date: { userId: session.user.id, date } },
+      where: { date },
+      include: { creator: { select: { name: true, email: true } } },
     })
     return NextResponse.json({ openingBalance: ob })
   }
 
   const list = await db.openingBalance.findMany({
-    where: { userId: session.user.id },
     orderBy: { date: 'desc' },
+    include: { creator: { select: { name: true, email: true } } },
   })
   return NextResponse.json({ openingBalances: list })
 }
@@ -45,13 +46,17 @@ export async function POST(req: NextRequest) {
     }
 
     const ob = await db.openingBalance.upsert({
-      where: { userId_date: { userId: session.user.id, date } },
-      update: { amount: Math.round(amt * 100) / 100, note: note?.trim() || null },
+      where: { date },
+      update: {
+        amount: Math.round(amt * 100) / 100,
+        note: note?.trim() || null,
+        createdById: session.user.id,
+      },
       create: {
-        userId: session.user.id,
         date,
         amount: Math.round(amt * 100) / 100,
         note: note?.trim() || null,
+        createdById: session.user.id,
       },
     })
     return NextResponse.json({ openingBalance: ob })
@@ -73,9 +78,7 @@ export async function DELETE(req: NextRequest) {
     if (!date) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
-    await db.openingBalance.deleteMany({
-      where: { userId: session.user.id, date },
-    })
+    await db.openingBalance.deleteMany({ where: { date } })
     return NextResponse.json({ ok: true })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'

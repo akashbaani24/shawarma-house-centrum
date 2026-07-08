@@ -11,16 +11,7 @@ function todayStr(): string {
   return `${y}-${m}-${day}`
 }
 
-function shiftDate(dateStr: string, deltaDays: number): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + deltaDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-// GET /api/dashboard  -> today's summary + recent entries
+// GET /api/dashboard
 export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -30,15 +21,16 @@ export async function GET(_req: NextRequest) {
   const today = todayStr()
 
   const [todayEntries, recentEntries, openingOB] = await Promise.all([
-    db.entry.findMany({ where: { userId: session.user.id, date: today } }),
     db.entry.findMany({
-      where: { userId: session.user.id },
+      where: { date: today },
+      include: { creator: { select: { name: true, email: true } } },
+    }),
+    db.entry.findMany({
       orderBy: [{ createdAt: 'desc' }],
       take: 8,
+      include: { creator: { select: { name: true, email: true } } },
     }),
-    db.openingBalance.findUnique({
-      where: { userId_date: { userId: session.user.id, date: today } },
-    }),
+    db.openingBalance.findUnique({ where: { date: today } }),
   ])
 
   const income = todayEntries.filter((e) => e.kind === 'INCOME').reduce((s, e) => s + e.amount, 0)
@@ -46,8 +38,8 @@ export async function GET(_req: NextRequest) {
   const opening = openingOB?.amount ?? 0
   const closing = opening + income - expense
 
-  // Count of types
-  const typeCount = await db.entryType.count({ where: { userId: session.user.id } })
+  const typeCount = await db.entryType.count()
+  const userCount = await db.user.count()
 
   return NextResponse.json({
     today,
@@ -57,6 +49,8 @@ export async function GET(_req: NextRequest) {
     closing,
     entryCount: todayEntries.length,
     typeCount,
+    userCount,
+    role: session.user.role,
     recentEntries,
   })
 }

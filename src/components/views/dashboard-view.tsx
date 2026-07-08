@@ -28,6 +28,8 @@ interface DashboardData {
   closing: number
   entryCount: number
   typeCount: number
+  userCount: number
+  role: string
   recentEntries: {
     id: string
     kind: string
@@ -35,6 +37,7 @@ interface DashboardData {
     amount: number
     note: string | null
     date: string
+    creator?: { name: string | null; email: string } | null
   }[]
 }
 
@@ -174,6 +177,9 @@ export default function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey)
                         </div>
                         <div className="text-xs text-neutral-500 mt-0.5 truncate">
                           {e.category}{e.note ? ` · ${e.note}` : ''}
+                          {e.creator && (
+                            <span className="text-neutral-400"> · by {e.creator.name || e.creator.email}</span>
+                          )}
                         </div>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${

@@ -17,10 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Date is required' }, { status: 400 })
   }
 
-  const rows = await db.denomination.findMany({
-    where: { userId: session.user.id, date },
-  })
-  // return as a map { denomination: count } including all valid denoms (0 if missing)
+  const rows = await db.denomination.findMany({ where: { date } })
   const map: Record<number, number> = {}
   for (const d of VALID_DENOMS) map[d] = 0
   for (const r of rows) {
@@ -45,7 +42,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'counts object is required' }, { status: 400 })
     }
 
-    // Normalize counts
     const normalized: { denomination: number; count: number }[] = []
     for (const d of VALID_DENOMS) {
       const c = counts[String(d)] ?? counts[d] ?? 0
@@ -53,22 +49,18 @@ export async function POST(req: NextRequest) {
       normalized.push({ denomination: d, count: n })
     }
 
-    // Delete existing + recreate (transaction)
     await db.$transaction(async (tx) => {
-      await tx.denomination.deleteMany({
-        where: { userId: session.user.id, date },
-      })
-      if (normalized.some((n) => n.count > 0)) {
-        await tx.denomination.createMany({
-          data: normalized
-            .filter((n) => n.count > 0)
-            .map((n) => ({
-              userId: session.user.id,
-              date,
-              denomination: n.denomination,
-              count: n.count,
-            })),
-        })
+      await tx.denomination.deleteMany({ where: { date } })
+      const toCreate = normalized
+        .filter((n) => n.count > 0)
+        .map((n) => ({
+          date,
+          denomination: n.denomination,
+          count: n.count,
+          createdById: session.user.id,
+        }))
+      if (toCreate.length > 0) {
+        await tx.denomination.createMany({ data: toCreate })
       }
     })
 

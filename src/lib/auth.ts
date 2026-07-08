@@ -3,6 +3,16 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 
+function parseRights(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.map(String) : []
+  } catch {
+    return []
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
@@ -31,11 +41,8 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name ?? user.businessName,
           businessName: user.businessName,
-        } as {
-          id: string
-          email: string
-          name?: string | null
-          businessName: string
+          role: (user.role as 'ADMIN' | 'USER') ?? 'USER',
+          rights: parseRights(user.rights),
         }
       },
     }),
@@ -45,6 +52,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = (user as { id: string }).id
         token.businessName = (user as { businessName?: string }).businessName ?? 'Daily Report'
+        token.role = (user as { role?: 'ADMIN' | 'USER' }).role ?? 'USER'
+        token.rights = (user as { rights?: string[] }).rights ?? []
       }
       return token
     },
@@ -53,6 +62,10 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as { id?: string }).id = token.id as string
         ;(session.user as { businessName?: string }).businessName =
           (token.businessName as string) ?? 'Daily Report'
+        ;(session.user as { role?: 'ADMIN' | 'USER' }).role =
+          (token.role as 'ADMIN' | 'USER') ?? 'USER'
+        ;(session.user as { rights?: string[] }).rights =
+          (token.rights as string[]) ?? []
       }
       return session
     },

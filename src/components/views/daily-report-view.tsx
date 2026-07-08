@@ -57,6 +57,8 @@ const CURRENCY = '৳'
 interface ReportData {
   date: string
   businessName: string
+  preparedBy: string[]
+  currentUser: string
   openingBalance: number
   openingSource: string
   openingSourceDate: string | null
@@ -516,6 +518,21 @@ export default function DailyReportView() {
             {/* Next day opening info */}
             <div className="mt-3 text-center text-[10px] text-neutral-400 print:hidden">
               আগামী দিনের Opening Balance হবে: {CURRENCY}{fmt(report.calculatedClosing)} (আজকের Calculated Closing)
+            </div>
+
+            {/* Prepared by footer (always visible, printable) */}
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+              <div>
+                <span className="text-neutral-500">Prepared by: </span>
+                <span className="font-semibold">
+                  {report.preparedBy.length > 0
+                    ? report.preparedBy.join(', ')
+                    : report.currentUser}
+                </span>
+              </div>
+              <div className="text-neutral-400 text-[10px]">
+                Generated on {new Date().toLocaleString('en-GB')}
+              </div>
             </div>
           </div>
         </>

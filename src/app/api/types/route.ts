@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-// GET /api/types?kind=INCOME  -> list user's types (optionally filtered)
+// GET /api/types?kind=INCOME  -> list all types (shared)
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const kind = searchParams.get('kind')
 
-  const where: { userId: string; kind?: string } = { userId: session.user.id }
+  const where: { kind?: string } = {}
   if (kind && (kind === 'INCOME' || kind === 'EXPENSE')) where.kind = kind
 
   const types = await db.entryType.findMany({
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ types })
 }
 
-// POST /api/types  { name, kind }
+// POST /api/types  { name, kind }  (any authenticated user)
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const type = await db.entryType.create({
-      data: { userId: session.user.id, name, kind },
+      data: { name, kind, createdById: session.user.id },
     })
     return NextResponse.json({ type }, { status: 201 })
   } catch (e) {

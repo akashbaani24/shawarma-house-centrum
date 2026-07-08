@@ -5,7 +5,6 @@ import { db } from '@/lib/db'
 
 type Params = { params: Promise<{ id: string }> }
 
-// DELETE /api/types/:id
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -13,11 +12,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
   try {
     const { id } = await params
-    // Ensure ownership
-    const existing = await db.entryType.findUnique({ where: { id } })
-    if (!existing || existing.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
     await db.entryType.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (e) {
@@ -26,7 +20,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 }
 
-// PUT /api/types/:id  { name }
 export async function PUT(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -38,10 +31,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const name = String(body?.name ?? '').trim()
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-    }
-    const existing = await db.entryType.findUnique({ where: { id } })
-    if (!existing || existing.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const type = await db.entryType.update({ where: { id }, data: { name } })
     return NextResponse.json({ type })

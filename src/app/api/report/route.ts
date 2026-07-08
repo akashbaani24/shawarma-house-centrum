@@ -14,19 +14,12 @@ function shiftDate(dateStr: string, deltaDays: number): string {
   return `${y}-${m}-${day}`
 }
 
-// Compute the opening balance for a given date:
-// 1. If explicit OpeningBalance entry exists for `date`, use it.
-// 2. Otherwise, walk backwards day-by-day (up to 366 days) to find the most recent
-//    date that has data. Use that date's *calculated closing* = opening + income - expense.
-//    (Denomination is not used for the flow — only for excess/shortage verification.)
+// Compute the opening balance for a given date (shared data, no userId)
 async function computeOpeningBalance(
-  userId: string,
   date: string,
 ): Promise<{ amount: number; source: 'explicit' | 'carryover' | 'none'; sourceDate?: string }> {
   // 1. Explicit
-  const explicit = await db.openingBalance.findUnique({
-    where: { userId_date: { userId, date } },
-  })
+  const explicit = await db.openingBalance.findUnique({ where: { date } })
   if (explicit) {
     return { amount: explicit.amount, source: 'explicit', sourceDate: date }
   }
@@ -35,30 +28,21 @@ async function computeOpeningBalance(
   let cursor = shiftDate(date, -1)
   for (let i = 0; i < 366; i++) {
     const [entries, denomRows] = await Promise.all([
-      db.entry.findMany({ where: { userId, date: cursor } }),
-      db.denomination.findMany({ where: { userId, date: cursor } }),
+      db.entry.findMany({ where: { date: cursor } }),
+      db.denomination.findMany({ where: { date: cursor } }),
     ])
 
     if (entries.length > 0 || denomRows.length > 0) {
-      // Found the most recent day with activity. Compute its calculated closing.
-      const income = entries
-        .filter((e) => e.kind === 'INCOME')
-        .reduce((s, e) => s + e.amount, 0)
-      const expense = entries
-        .filter((e) => e.kind === 'EXPENSE')
-        .reduce((s, e) => s + e.amount, 0)
-      // Recursively get that day's opening
-      const prevOpening = await computeOpeningBalance(userId, cursor)
+      const income = entries.filter((e) => e.kind === 'INCOME').reduce((s, e) => s + e.amount, 0)
+      const expense = entries.filter((e) => e.kind === 'EXPENSE').reduce((s, e) => s + e.amount, 0)
+      const prevOpening = await computeOpeningBalance(cursor)
       const closing = prevOpening.amount + income - expense
       return { amount: closing, source: 'carryover', sourceDate: cursor }
     }
 
-    // Also check if there's an explicit opening balance on this cursor date (business start)
-    const ob = await db.openingBalance.findUnique({
-      where: { userId_date: { userId, date: cursor } },
-    })
+    const ob = await db.openingBalance.findUnique({ where: { date: cursor } })
     if (ob) {
-      const entries2 = await db.entry.findMany({ where: { userId, date: cursor } })
+      const entries2 = await db.entry.findMany({ where: { date: cursor } })
       const income = entries2.filter((e) => e.kind === 'INCOME').reduce((s, e) => s + e.amount, 0)
       const expense = entries2.filter((e) => e.kind === 'EXPENSE').reduce((s, e) => s + e.amount, 0)
       const closing = ob.amount + income - expense
@@ -84,9 +68,12 @@ export async function GET(req: NextRequest) {
   }
 
   const [entries, denomRows, openingInfo] = await Promise.all([
-    db.entry.findMany({ where: { userId: session.user.id, date } }),
-    db.denomination.findMany({ where: { userId: session.user.id, date } }),
-    computeOpeningBalance(session.user.id, date),
+    db.entry.findMany({
+      where: { date },
+      include: { creator: { select: { name: true, email: true } } },
+    }),
+    db.denomination.findMany({ where: { date } }),
+    computeOpeningBalance(date),
   ])
 
   const incomeEntries = entries.filter((e) => e.kind === 'INCOME')
@@ -95,7 +82,6 @@ export async function GET(req: NextRequest) {
   const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
   const openingBalance = openingInfo.amount
 
-  // Denomination map
   const denomMap: Record<number, number> = {}
   for (const d of VALID_DENOMS) denomMap[d] = 0
   for (const r of denomRows) {
@@ -103,23 +89,27 @@ export async function GET(req: NextRequest) {
   }
   const cashInHand = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
 
-  // Calculated closing = opening + income - expense
   const calculatedClosing = openingBalance + totalIncome - totalExpense
 
-  // Balance check (req 5):
-  // Left (income side)  = Opening + Total Income
-  // Right (expense side) = Total Expense + Cash in Hand (denomination)
   const leftTotal = openingBalance + totalIncome
   const rightTotal = totalExpense + cashInHand
   const difference = leftTotal - rightTotal
-  // difference > 0  => shortage (less cash than expected)
-  // difference < 0  => excess (more cash than expected)
-  // difference == 0 => balanced
   const isBalanced = Math.abs(difference) < 0.005
+
+  // Collect distinct creators for "Prepared by"
+  const creators = new Map<string, { name: string | null; email: string }>()
+  for (const e of entries) {
+    if (e.creator) {
+      creators.set(e.creator.email, { name: e.creator.name, email: e.creator.email })
+    }
+  }
+  const preparedBy = Array.from(creators.values()).map((c) => c.name || c.email)
 
   return NextResponse.json({
     date,
     businessName: session.user.businessName,
+    preparedBy,
+    currentUser: session.user.name || session.user.email,
     openingBalance,
     openingSource: openingInfo.source,
     openingSourceDate: openingInfo.sourceDate ?? null,
@@ -135,7 +125,5 @@ export async function GET(req: NextRequest) {
     rightTotal,
     difference,
     isBalanced,
-    // For the next-day preview:
-    nextDayClosing: calculatedClosing,
   })
 }
