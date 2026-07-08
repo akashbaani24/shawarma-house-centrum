@@ -10,6 +10,7 @@ export const ALL_RIGHTS = [
   'expense-branch',
   'expense-office',
   'invest',
+  'suppliers',
   'types',
   'opening',
   'branch-report',

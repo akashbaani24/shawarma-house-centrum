@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json()
-    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source } = body ?? {}
+    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source, expenseCategoryId, supplierId } = body ?? {}
 
     if (kind !== 'INCOME' && kind !== 'EXPENSE' && kind !== 'INVEST') {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
@@ -85,6 +85,18 @@ export async function POST(req: NextRequest) {
       if (acct) finalBankAccountId = bankAccountId
     }
 
+    // Expense two-level dropdown: validate expenseCategoryId + supplierId
+    let finalExpenseCategoryId: string | null = null
+    if (expenseCategoryId) {
+      const ec = await db.expenseCategory.findUnique({ where: { id: expenseCategoryId } })
+      if (ec) finalExpenseCategoryId = ec.id
+    }
+    let finalSupplierId: string | null = null
+    if (supplierId) {
+      const sup = await db.supplier.findUnique({ where: { id: supplierId } })
+      if (sup) finalSupplierId = sup.id
+    }
+
     const entry = await db.entry.create({
       data: {
         createdById: session.user.id,
@@ -97,6 +109,8 @@ export async function POST(req: NextRequest) {
         paymentMethod: method,
         source: src,
         bankAccountId: finalBankAccountId,
+        expenseCategoryId: finalExpenseCategoryId,
+        supplierId: finalSupplierId,
       },
     })
     return NextResponse.json({ entry }, { status: 201 })

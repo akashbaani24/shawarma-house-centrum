@@ -63,20 +63,25 @@ model EntryType {
 }
 
 model Entry {
-  id             String   @id @default(cuid())
-  createdById    String?
-  creator        User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  typeId         String?
-  kind           String   // "INCOME" | "EXPENSE"
-  category       String
-  amount         Float
-  note           String?
-  date           String   // YYYY-MM-DD
-  paymentMethod  String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK
-  source         String   @default("BRANCH") // BRANCH | OFFICE — BRANCH shows in Branch Daily Report, OFFICE only in Expense Details
-  bankAccountId  String?
-  bankAccount    BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
+  id                String   @id @default(cuid())
+  createdById       String?
+  creator           User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  typeId            String?
+  kind              String   // "INCOME" | "EXPENSE" | "INVEST"
+  category          String
+  amount            Float
+  note              String?
+  date              String   // YYYY-MM-DD
+  paymentMethod     String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK
+  source            String   @default("BRANCH") // BRANCH | OFFICE — BRANCH shows in Branch Daily Report, OFFICE only in Expense Details
+  bankAccountId     String?
+  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  // Expense two-level dropdown: links to the main expense category + supplier
+  expenseCategoryId String?
+  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
+  supplierId        String?
+  supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
 
   @@index([date])
   @@index([kind, date])
@@ -115,4 +120,33 @@ model BusinessProfile {
   id        String   @id @default(cuid())
   logoUrl   String?
   updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries   Entry[]
+
+  @@unique([name])
+}
+
+// Main expense categories for the two-level dropdown.
+// itemType determines what the second dropdown shows:
+//   "TYPE"     → existing EntryType (expense heads)
+//   "SUPPLIER" → Supplier names
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "Regular Expense", "Supplier Bill"
+  itemType  String   @default("TYPE") // "TYPE" | "SUPPLIER"
+  createdAt DateTime @default(now())
+
+  entries   Entry[]
+
+  @@unique([name])
 }

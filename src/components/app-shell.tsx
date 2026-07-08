@@ -21,6 +21,7 @@ import {
   Receipt,
   TrendingUp,
   Settings,
+  Truck,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -30,6 +31,7 @@ import DailyReportView from '@/components/views/daily-report-view'
 import ExpenseDetailsView from '@/components/views/expense-details-view'
 import InvestmentReportView from '@/components/views/investment-report-view'
 import SettingsView from '@/components/views/settings-view'
+import SupplierEntryView from '@/components/views/supplier-entry-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -40,6 +42,7 @@ export type ViewKey =
   | 'expense-branch'
   | 'expense-office'
   | 'invest'
+  | 'suppliers'
   | 'types'
   | 'opening'
   | 'branch-report'
@@ -64,6 +67,7 @@ const TOP_NAV: NavItem[] = [
   { key: 'expense-branch', label: 'Expense By Branch', icon: ArrowDownCircle },
   { key: 'expense-office', label: 'Expense By Office', icon: ArrowDownCircle },
   { key: 'invest', label: 'Invest Entry', icon: TrendingUp },
+  { key: 'suppliers', label: 'Supplier Entry', icon: Truck },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
@@ -289,6 +293,7 @@ function AppShellInner({
             {view === 'expense-branch' && <EntryView kind="EXPENSE" source="BRANCH" title="Expense By Branch" />}
             {view === 'expense-office' && <EntryView kind="EXPENSE" source="OFFICE" title="Expense By Office" />}
             {view === 'invest' && <EntryView kind="INVEST" source="BRANCH" title="Invest Entry" accentColor="amber" />}
+            {view === 'suppliers' && <SupplierEntryView />}
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
             {view === 'bank-accounts' && <BankAccountsView />}

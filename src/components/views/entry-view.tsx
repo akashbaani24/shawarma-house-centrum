@@ -44,6 +44,17 @@ interface TypeItem {
   kind: string
 }
 
+interface ExpenseCategoryItem {
+  id: string
+  name: string
+  itemType: string // "TYPE" | "SUPPLIER"
+}
+
+interface SupplierItem {
+  id: string
+  name: string
+}
+
 interface EntryItem {
   id: string
   kind: string
@@ -87,10 +98,14 @@ export default function EntryView({
   const [types, setTypes] = useState<TypeItem[]>([])
   const [entries, setEntries] = useState<EntryItem[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([])
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategoryItem[]>([])
+  const [suppliers, setSuppliers] = useState<SupplierItem[]>([])
   const [loadingTypes, setLoadingTypes] = useState(true)
   const [loadingEntries, setLoadingEntries] = useState(true)
 
   const [typeId, setTypeId] = useState<string>('')
+  const [expenseCategoryId, setExpenseCategoryId] = useState<string>('')
+  const [supplierId, setSupplierId] = useState<string>('')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [date, setDate] = useState(todayStr())
@@ -137,11 +152,47 @@ export default function EntryView({
     }
   }, [])
 
+  const loadExpenseCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/expense-categories', { cache: 'no-store' })
+      const d = await res.json()
+      if (res.ok) {
+        setExpenseCategories(d.categories)
+        // Default-select the first category
+        if (d.categories.length > 0) setExpenseCategoryId(d.categories[0].id)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const loadSuppliers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/suppliers', { cache: 'no-store' })
+      const d = await res.json()
+      if (res.ok) setSuppliers(d.suppliers)
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     loadTypes()
     loadEntries()
     loadBankAccounts()
-  }, [loadTypes, loadEntries, loadBankAccounts])
+    if (kind === 'EXPENSE') {
+      loadExpenseCategories()
+      loadSuppliers()
+    }
+  }, [loadTypes, loadEntries, loadBankAccounts, loadExpenseCategories, loadSuppliers, kind])
+
+  // When expenseCategory changes, reset the sub-selection
+  const selectedExpenseCategory = expenseCategories.find((c) => c.id === expenseCategoryId)
+  const isSupplierCategory = selectedExpenseCategory?.itemType === 'SUPPLIER'
+  useEffect(() => {
+    setTypeId('')
+    setSupplierId('')
+  }, [expenseCategoryId])
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
   useEffect(() => {
@@ -154,16 +205,54 @@ export default function EntryView({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const selectedType = types.find((t) => t.id === typeId)
-    if (!selectedType) {
-      toast.error('Please select a type. Create one in Manage Types if none exist.')
-      return
-    }
     const amt = parseFloat(amount)
     if (!amount || isNaN(amt) || amt <= 0) {
       toast.error('Please enter a valid amount')
       return
     }
+
+    // Determine category, typeId, supplierId based on kind
+    let finalCategory = ''
+    let finalTypeId: string | null = null
+    let finalSupplierId: string | null = null
+    let finalExpenseCategoryId: string | null = null
+
+    if (kind === 'EXPENSE') {
+      if (!expenseCategoryId) {
+        toast.error('Please select a type')
+        return
+      }
+      finalExpenseCategoryId = expenseCategoryId
+      if (isSupplierCategory) {
+        // Supplier Bill
+        const selectedSupplier = suppliers.find((s) => s.id === supplierId)
+        if (!selectedSupplier) {
+          toast.error('Please select a supplier')
+          return
+        }
+        finalSupplierId = selectedSupplier.id
+        finalCategory = selectedSupplier.name
+      } else {
+        // Regular Expense — expense head
+        const selectedType = types.find((t) => t.id === typeId)
+        if (!selectedType) {
+          toast.error('Please select an expense head')
+          return
+        }
+        finalTypeId = selectedType.id
+        finalCategory = selectedType.name
+      }
+    } else {
+      // Income / Invest — single type dropdown
+      const selectedType = types.find((t) => t.id === typeId)
+      if (!selectedType) {
+        toast.error('Please select a type. Create one in Manage Types if none exist.')
+        return
+      }
+      finalTypeId = selectedType.id
+      finalCategory = selectedType.name
+    }
+
     setSubmitting(true)
     try {
       const res = await fetch('/api/entries', {
@@ -171,14 +260,16 @@ export default function EntryView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kind,
-          typeId: selectedType.id,
-          category: selectedType.name,
+          typeId: finalTypeId,
+          category: finalCategory,
           amount: amt,
           note,
           date,
           paymentMethod,
           source,
           bankAccountId: needsBankAccount ? bankAccountId : undefined,
+          expenseCategoryId: finalExpenseCategoryId || undefined,
+          supplierId: finalSupplierId || undefined,
         }),
       })
       const d = await res.json()
@@ -235,31 +326,101 @@ export default function EntryView({
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label className="mb-1.5 block">Type / Category</Label>
-                {loadingTypes ? (
-                  <div className="flex items-center gap-2 text-sm text-neutral-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
+              {kind === 'EXPENSE' ? (
+                <>
+                  {/* Two-level dropdown for expenses:
+                      1st dropdown: main expense category (Regular Expense, Supplier Bill, ...)
+                      2nd dropdown: depends on category itemType (TYPE → expense heads, SUPPLIER → suppliers) */}
+                  <div>
+                    <Label className="mb-1.5 block">Type</Label>
+                    <Select value={expenseCategoryId} onValueChange={setExpenseCategoryId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseCategories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-neutral-400 mt-1">
+                      New expense categories added in the system automatically appear here.
+                    </p>
                   </div>
-                ) : types.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center">
-                    <Tags className="h-6 w-6 mx-auto text-neutral-400 mb-2" />
-                    <p className="text-sm text-neutral-500 mb-2">No {isIncome ? 'income' : 'expense'} types yet.</p>
-                    <p className="text-xs text-neutral-400">Go to Manage Types to create one.</p>
-                  </div>
-                ) : (
-                  <Select value={typeId} onValueChange={setTypeId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {types.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+
+                  {expenseCategoryId && (
+                    <div>
+                      <Label className="mb-1.5 block">
+                        {isSupplierCategory ? 'Supplier' : 'Expense Head'}
+                      </Label>
+                      {isSupplierCategory ? (
+                        suppliers.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              No suppliers yet. Add suppliers in the Supplier Entry menu.
+                            </p>
+                          </div>
+                        ) : (
+                          <Select value={supplierId} onValueChange={setSupplierId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      ) : (
+                        types.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
+                            <p className="text-xs text-neutral-500">No expense heads yet. Add them in Manage Types.</p>
+                          </div>
+                        ) : (
+                          <Select value={typeId} onValueChange={setTypeId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select expense head" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {types.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Single type dropdown for income/invest */
+                <div>
+                  <Label className="mb-1.5 block">Type / Category</Label>
+                  {loadingTypes ? (
+                    <div className="flex items-center gap-2 text-sm text-neutral-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
+                    </div>
+                  ) : types.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center">
+                      <Tags className="h-6 w-6 mx-auto text-neutral-400 mb-2" />
+                      <p className="text-sm text-neutral-500 mb-2">No {isIncome ? 'income' : 'expense'} types yet.</p>
+                      <p className="text-xs text-neutral-400">Go to Manage Types to create one.</p>
+                    </div>
+                  ) : (
+                    <Select value={typeId} onValueChange={setTypeId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {types.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="amount" className="mb-1.5 block">Amount ({CURRENCY})</Label>
@@ -342,7 +503,7 @@ export default function EntryView({
               <Button
                 type="submit"
                 className="w-full"
-                disabled={submitting || types.length === 0}
+                disabled={submitting || (kind === 'EXPENSE' ? expenseCategories.length === 0 : types.length === 0)}
                 variant={kind === 'INVEST' ? 'default' : isIncome ? 'default' : 'destructive'}
                 style={kind === 'INVEST' ? { backgroundColor: '#d97706' } : undefined}
               >
