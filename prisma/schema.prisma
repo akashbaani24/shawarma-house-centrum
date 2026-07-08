@@ -10,16 +10,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Entry {
-  id        String   @id @default(cuid())
-  type      String   // "INCOME" | "EXPENSE"
-  amount    Float
-  category  String
-  note      String?
-  date      String   // stored as YYYY-MM-DD for easy daily grouping
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  businessName String   @default("Daily Report")
+  password     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  entries      Entry[]
+}
 
-  @@index([date])
-  @@index([type])
+model Entry {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section     String   // RECEIPTS | SALES | DENOMINATION | EXPENSES | ADVANCES | PAYMENTS | DEPOSITS
+  particulars String   // label / denomination value as string
+  amount      Float    @default(0)
+  count       Int?     // for denomination only
+  date        String   // YYYY-MM-DD
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, section, particulars, date])
+  @@index([userId, date])
+  @@index([userId, section, date])
 }
