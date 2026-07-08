@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import {
@@ -56,7 +57,7 @@ const NAV: NavItem[] = [
   { key: 'reset', label: 'Reset Data', icon: AlertTriangle, adminOnly: true },
 ]
 
-export default function AppShell({
+function AppShellInner({
   user,
 }: {
   user: {
@@ -68,23 +69,35 @@ export default function AppShell({
     rights: string[]
   }
 }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const isAdmin = user.role === 'ADMIN'
-  // admin sees everything; regular users only see what's in their rights
+
   const canSee = (item: NavItem) => {
     if (item.adminOnly) return isAdmin
     return isAdmin || user.rights.includes(item.key)
   }
   const visibleNav = NAV.filter(canSee)
 
-  const [view, setView] = useState<ViewKey>(visibleNav[0]?.key ?? 'dashboard')
+  // Read the current view from the URL query param, default to first visible nav
+  const paramView = searchParams.get('view') as ViewKey | null
+  const view: ViewKey =
+    paramView && visibleNav.some((n) => n.key === paramView)
+      ? paramView
+      : visibleNav[0]?.key ?? 'dashboard'
+
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const displayName = user.businessName || user.name || 'Daily Report'
 
-  const handleNav = (key: ViewKey) => {
-    setView(key)
-    setMobileOpen(false)
-  }
+  // Navigate to a view by updating the URL query param (client-side, no reload)
+  const handleNav = useCallback(
+    (key: ViewKey) => {
+      router.push(`/?view=${key}`)
+      setMobileOpen(false)
+    },
+    [router],
+  )
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
@@ -123,16 +136,29 @@ export default function AppShell({
               </div>
             </div>
 
-            {/* Nav */}
+            {/* Nav — each item is an <a> tag so the browser's native right-click
+                context menu includes "Open in new tab" / "Open in new window" /
+                "Copy link". Left-click does SPA navigation via router.push. */}
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {visibleNav.map((item) => {
                 const Icon = item.icon
                 const active = view === item.key
                 const isDanger = item.key === 'reset'
+                const href = `/?view=${item.key}`
                 return (
-                  <button
+                  <a
                     key={item.key}
-                    onClick={() => handleNav(item.key)}
+                    href={href}
+                    onClick={(e) => {
+                      // Left-click: SPA navigation (no full page reload)
+                      // Ctrl/Cmd+click or middle-click: let the browser handle it
+                      // (opens in new tab natively)
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
+                        return // let default <a> behavior happen (new tab)
+                      }
+                      e.preventDefault()
+                      handleNav(item.key)
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       active
                         ? isDanger
@@ -145,7 +171,7 @@ export default function AppShell({
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
-                  </button>
+                  </a>
                 )
               })}
             </nav>
@@ -180,5 +206,31 @@ export default function AppShell({
         </main>
       </div>
     </div>
+  )
+}
+
+// Wrapper with Suspense (useSearchParams requires it in Next.js 16)
+export default function AppShell({
+  user,
+}: {
+  user: {
+    id: string
+    email: string
+    name?: string | null
+    businessName: string
+    role: 'ADMIN' | 'USER'
+    rights: string[]
+  }
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-neutral-100 dark:bg-neutral-950">
+          <div className="h-6 w-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <AppShellInner user={user} />
+    </Suspense>
   )
 }
