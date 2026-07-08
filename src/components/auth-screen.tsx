@@ -140,12 +140,12 @@ export default function AuthScreen() {
                   </CardTitle>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <Label htmlFor="login-email" className="mb-1.5 block">Email</Label>
+                      <Label htmlFor="login-email" className="mb-1.5 block">Username / Email</Label>
                       <Input
                         id="login-email"
-                        type="email"
-                        autoComplete="email"
-                        placeholder="you@example.com"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="admin"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         required
@@ -248,12 +248,12 @@ export default function AuthScreen() {
                     <CardTitle className="text-base mb-4">Sign in</CardTitle>
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
-                        <Label htmlFor="login-email2" className="mb-1.5 block">Email</Label>
+                        <Label htmlFor="login-email2" className="mb-1.5 block">Username / Email</Label>
                         <Input
                           id="login-email2"
-                          type="email"
-                          autoComplete="email"
-                          placeholder="you@example.com"
+                          type="text"
+                          autoComplete="username"
+                          placeholder="admin"
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
                           required
