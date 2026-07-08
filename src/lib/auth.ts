@@ -58,25 +58,32 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      // Verify the user still exists in the DB (handles stale sessions after DB reset)
+      // Verify the user still exists in the DB (handles stale sessions after DB reset).
+      // Wrapped in try-catch: if the DB is unreachable (e.g. missing env vars on
+      // Vercel), we degrade gracefully instead of crashing the whole page.
       if (token.id) {
-        const dbUser = await db.user.findUnique({
-          where: { id: token.id },
-          select: { id: true, role: true, rights: true, businessName: true, name: true, email: true },
-        })
-        if (!dbUser) {
-          // User no longer exists — return an empty session to force re-login
-          return { ...session, user: undefined as unknown as typeof session.user }
-        }
-        // Refresh role/rights/businessName from DB in case they changed
-        if (session.user) {
-          ;(session.user as { id?: string }).id = dbUser.id
-          ;(session.user as { businessName?: string }).businessName = dbUser.businessName
-          ;(session.user as { role?: 'ADMIN' | 'USER' }).role =
-            (dbUser.role as 'ADMIN' | 'USER') ?? 'USER'
-          ;(session.user as { rights?: string[] }).rights = parseRights(dbUser.rights)
-          ;(session.user as { email?: string }).email = dbUser.email
-          ;(session.user as { name?: string | null }).name = dbUser.name
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: token.id },
+            select: { id: true, role: true, rights: true, businessName: true, name: true, email: true },
+          })
+          if (!dbUser) {
+            // User no longer exists — return an empty session to force re-login
+            return { ...session, user: undefined as unknown as typeof session.user }
+          }
+          // Refresh role/rights/businessName from DB in case they changed
+          if (session.user) {
+            ;(session.user as { id?: string }).id = dbUser.id
+            ;(session.user as { businessName?: string }).businessName = dbUser.businessName
+            ;(session.user as { role?: 'ADMIN' | 'USER' }).role =
+              (dbUser.role as 'ADMIN' | 'USER') ?? 'USER'
+            ;(session.user as { rights?: string[] }).rights = parseRights(dbUser.rights)
+            ;(session.user as { email?: string }).email = dbUser.email
+            ;(session.user as { name?: string | null }).name = dbUser.name
+          }
+        } catch {
+          // DB unreachable — return the session as-is (token data still valid)
+          // This prevents a 500 crash; the user may see stale data until DB is fixed.
         }
       }
       return session
