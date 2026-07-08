@@ -15,6 +15,8 @@ export default function AuthScreen() {
   const router = useRouter()
 
   const [hasAdmin, setHasAdmin] = useState<boolean | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [businessName, setBusinessName] = useState<string>('Shawarma House : Centrum Branch')
 
   // login state
   const [loginEmail, setLoginEmail] = useState('')
@@ -29,10 +31,19 @@ export default function AuthScreen() {
   const [regLoading, setRegLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/setup-status', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => setHasAdmin(Boolean(d.hasAdmin)))
-      .catch(() => setHasAdmin(true)) // fail closed: hide registration
+    // Fetch both setup-status and public logo in parallel
+    Promise.all([
+      fetch('/api/setup-status', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/public-logo', { cache: 'no-store' }).then((r) => r.json()),
+    ])
+      .then(([setupData, logoData]) => {
+        setHasAdmin(Boolean(setupData.hasAdmin))
+        if (logoData.logoUrl) setLogoUrl(logoData.logoUrl)
+        if (logoData.businessName) setBusinessName(logoData.businessName)
+      })
+      .catch(() => {
+        setHasAdmin(true)
+      })
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -119,11 +130,19 @@ export default function AuthScreen() {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center space-y-3">
-            <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-600 text-white grid place-items-center shadow-lg shadow-emerald-600/20">
-              <Wallet className="h-7 w-7" />
-            </div>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Company Logo"
+                className="mx-auto h-20 w-20 object-contain rounded-xl shadow-lg"
+              />
+            ) : (
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-600 text-white grid place-items-center shadow-lg shadow-emerald-600/20">
+                <Wallet className="h-7 w-7" />
+              </div>
+            )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Shawarma House : Centrum Branch</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{businessName}</h1>
               <p className="text-sm text-neutral-500 mt-1">
                 Daily Cash Report — track receipts, payments, sales &amp; deposits
               </p>
