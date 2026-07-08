@@ -123,9 +123,9 @@ export default function AuthScreen() {
               <Wallet className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Daily Cash Report</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Shawarma House : Centrum Branch</h1>
               <p className="text-sm text-neutral-500 mt-1">
-                Track your daily receipts, payments, sales &amp; deposits
+                Daily Cash Report — track receipts, payments, sales &amp; deposits
               </p>
             </div>
           </div>
