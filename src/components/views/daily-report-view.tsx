@@ -68,11 +68,15 @@ interface ReportData {
   expensesEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   paymentsEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   depositsEntries: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  shortageEntries?: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
+  excessEntries?: { id: string; category: string; amount: number; note: string | null; paymentMethod?: string; bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null }[]
   totalIncome: number
   totalExpense: number
   totalExpenses: number
   totalPayments: number
   totalDeposits: number
+  totalShortage?: number
+  totalExcess?: number
   cashShortage: number
   excessCash: number
   denominations: Record<number, number>
@@ -374,6 +378,39 @@ export default function DailyReportView() {
                   </Table>
                 </div>
 
+                {/* Excess / Extra Cash — separate section after Income */}
+                {report.excessEntries && report.excessEntries.length > 0 && (
+                  <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
+                    <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                        Excess / Extra Cash
+                      </span>
+                    </div>
+                    <Table className="text-[11px]">
+                      <TableBody>
+                        {report.excessEntries.map((e) => (
+                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2">
+                              {e.category}
+                              {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
+                                </span>
+                              )}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
+                            </TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
+                          <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Excess -</TableCell>
+                          <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalExcess || 0)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
                 {/* Denomination of Closing Cash */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200 flex items-center justify-between">
@@ -543,6 +580,34 @@ export default function DailyReportView() {
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Cash Shortage — separate section after Deposits */}
+                {report.shortageEntries && report.shortageEntries.length > 0 && (
+                  <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
+                    <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                        Cash Shortage
+                      </span>
+                    </div>
+                    <Table className="text-[11px]">
+                      <TableBody>
+                        {report.shortageEntries.map((e) => (
+                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2">
+                              {e.category}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
+                            </TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
+                          <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Shortage -</TableCell>
+                          <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalShortage || 0)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
 
                 {/* Calculated closing (info) — visible in print */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-neutral-50 dark:bg-neutral-900/30 print:border-black">

@@ -82,19 +82,35 @@ export async function GET(req: NextRequest) {
     }
 
     // Categorize expense entries
-    const classify = (cat: string): 'EXPENSES' | 'PAYMENTS' | 'DEPOSITS' => {
+    const classify = (cat: string): 'EXPENSES' | 'PAYMENTS' | 'DEPOSITS' | 'SHORTAGE' => {
       const c = cat.toLowerCase().trim()
+      if (c.includes('cash shortage') || c === 'shortage') return 'SHORTAGE'
       if (c.includes('deposit') || c.includes('bank account') || c.includes('card sales') || c.includes('digital wallet') || c.includes('bkash no') || c.includes('bkash mobile')) return 'DEPOSITS'
       if (c.startsWith('payment to') || c.startsWith('paid to') || c.includes('advance')) return 'PAYMENTS'
       return 'EXPENSES'
     }
 
+    // Categorize income entries — "Cash Excess Found" is a separate Excess section
+    const classifyIncome = (cat: string): 'INCOME' | 'EXCESS' => {
+      const c = cat.toLowerCase().trim()
+      if (c.includes('cash excess') || c.includes('excess found') || c === 'excess') return 'EXCESS'
+      return 'INCOME'
+    }
+
     const expensesEntries = expenseEntries.filter((e) => classify(e.category) === 'EXPENSES')
     const paymentsEntries = expenseEntries.filter((e) => classify(e.category) === 'PAYMENTS')
     const depositsEntries = expenseEntries.filter((e) => classify(e.category) === 'DEPOSITS')
+    const shortageEntries = expenseEntries.filter((e) => classify(e.category) === 'SHORTAGE')
+    const pureIncomeEntries = incomeEntries.filter((e) => classifyIncome(e.category) === 'INCOME')
+    const excessEntries = incomeEntries.filter((e) => classifyIncome(e.category) === 'EXCESS')
     const totalExpenses = expensesEntries.reduce((s, e) => s + e.amount, 0)
     const totalPayments = paymentsEntries.reduce((s, e) => s + e.amount, 0)
     const totalDeposits = depositsEntries.reduce((s, e) => s + e.amount, 0)
+    const totalShortage = shortageEntries.reduce((s, e) => s + e.amount, 0)
+    const totalExcess = excessEntries.reduce((s, e) => s + e.amount, 0)
+    // totalIncome stays as-is (includes excess) for opening balance calc
+    // But for the report display, pure income excludes excess
+    const totalPureIncome = pureIncomeEntries.reduce((s, e) => s + e.amount, 0)
 
     const denomMap: Record<number, number> = {}
     for (const d of VALID_DENOMS) denomMap[d] = 0
@@ -120,16 +136,20 @@ export async function GET(req: NextRequest) {
       openingBalance,
       openingSource,
       openingSourceDate,
-      incomeEntries,
+      incomeEntries: pureIncomeEntries,
       expenseEntries,
       expensesEntries,
       paymentsEntries,
       depositsEntries,
-      totalIncome,
+      shortageEntries,
+      excessEntries,
+      totalIncome: totalPureIncome,
       totalExpense,
       totalExpenses,
       totalPayments,
       totalDeposits,
+      totalShortage,
+      totalExcess,
       cashShortage,
       excessCash,
       denominations: denomMap,
