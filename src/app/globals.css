@@ -161,12 +161,13 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm;
+    margin: 8mm;
   }
   html, body {
     background: white !important;
     color: black !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
+    width: 100% !important;
   }
   /* Hide everything not meant for print */
   .print\:hidden {
@@ -176,14 +177,18 @@
   .print\:block {
     display: block !important;
   }
-  /* Force colors to print (for badges, totals backgrounds) */
+  /* Force colors to print */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  /* All text must be BLACK in print for readability */
+  * {
+    color: black !important;
+  }
   /* Section header backgrounds */
   .print\:bg-gray-200 {
-    background: #e5e5e5 !important;
+    background: #e0e0e0 !important;
   }
   .print\:bg-gray-100 {
     background: #f0f0f0 !important;
@@ -193,18 +198,54 @@
     border-color: black !important;
   }
   .print\:p-2 {
-    padding: 0.5rem !important;
+    padding: 0.25rem !important;
   }
   .print\:shadow-none {
     box-shadow: none !important;
   }
-  .print\:text-black {
-    color: black !important;
-  }
-  /* Make the report sheet fill the page */
+  /* Make the report sheet fill the full A4 width */
   main {
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+  }
+  /* Report sheet container fills page width */
+  .shadow-sm {
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 2mm !important;
+  }
+  /* Tables must not overflow — use full width */
+  table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    min-width: 0 !important;
+  }
+  /* Amount columns get enough width */
+  th, td {
+    overflow: visible !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+  /* Two-column grid fills the page */
+  .grid {
+    width: 100% !important;
+    gap: 2mm !important;
+  }
+  /* Remove the sidebar margin in print */
+  .md\:ml-64 {
+    margin-left: 0 !important;
+  }
+  /* Badge text: force black with light background for print */
+  span[class*="bg-sky"],
+  span[class*="bg-purple"],
+  span[class*="bg-emerald"],
+  span[class*="bg-rose"],
+  span[class*="bg-neutral"] {
+    color: black !important;
+    background: #e0e0e0 !important;
+    border: 1px solid #999 !important;
   }
 }
