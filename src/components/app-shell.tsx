@@ -74,12 +74,14 @@ const TOP_NAV: NavItem[] = [
   { key: 'invest', label: 'Invest Entry', icon: TrendingUp },
 ]
 
-// Setup sub-menu items (under "Setup" group)
+// Setup sub-menu items (under "Setup" group) — admin items too
 const SETUP_NAV: NavItem[] = [
   { key: 'suppliers', label: 'Supplier Entry', icon: Truck },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
+  { key: 'users', label: 'Manage Users', icon: Users, adminOnly: true },
+  { key: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
 // Report sub-menu items (under "Reports" group)
@@ -92,8 +94,6 @@ const REPORT_NAV: NavItem[] = [
 ]
 
 const ADMIN_NAV: NavItem[] = [
-  { key: 'users', label: 'Manage Users', icon: Users, adminOnly: true },
-  { key: 'settings', label: 'Settings', icon: Settings, adminOnly: true },
   { key: 'reset', label: 'Reset Data', icon: AlertTriangle, adminOnly: true },
 ]
 
