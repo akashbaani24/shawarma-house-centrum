@@ -48,7 +48,12 @@ export async function GET(req: NextRequest) {
     const totalIncome = incomeEntries.reduce((s, e) => s + e.amount, 0)
     const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
 
-    // Opening balance: find most recent explicit OB before `date`, then walk forward
+    // Opening balance: check for explicit OB ON the target date first,
+    // then most recent OB BEFORE the target date, then walk forward.
+    const obExactRes = await libsql.execute({
+      sql: 'SELECT date, amount FROM "OpeningBalance" WHERE date = ?',
+      args: [date],
+    })
     const obRes = await libsql.execute({
       sql: 'SELECT date, amount FROM "OpeningBalance" WHERE date < ? ORDER BY date DESC LIMIT 1',
       args: [date],
@@ -57,7 +62,13 @@ export async function GET(req: NextRequest) {
     let openingSource: 'explicit' | 'carryover' | 'none' = 'none'
     let openingSourceDate: string | null = null
 
-    if (obRes.rows.length > 0) {
+    if (obExactRes.rows.length > 0) {
+      // Explicit OB on the exact target date — use it directly (no walk needed)
+      const ob = obExactRes.rows[0] as { date: string; amount: number }
+      openingBalance = ob.amount
+      openingSource = 'explicit'
+      openingSourceDate = ob.date
+    } else if (obRes.rows.length > 0) {
       const ob = obRes.rows[0] as { date: string; amount: number }
       openingBalance = ob.amount
       openingSource = 'explicit'
