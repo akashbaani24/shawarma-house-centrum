@@ -195,6 +195,22 @@ export default function EntryView({
   // When expenseCategory changes, reset the sub-selection
   const selectedExpenseCategory = expenseCategories.find((c) => c.id === expenseCategoryId)
   const isSupplierCategory = selectedExpenseCategory?.itemType === 'SUPPLIER'
+  const isDepositCategory = selectedExpenseCategory?.name?.toLowerCase() === 'deposit'
+
+  // For Deposit category, load DEPOSIT-kind types instead of EXPENSE-kind types
+  const [depositTypes, setDepositTypes] = useState<TypeItem[]>([])
+  useEffect(() => {
+    if (kind === 'EXPENSE' && isDepositCategory) {
+      fetch('/api/types?kind=DEPOSIT', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          setDepositTypes(d.types || [])
+          if (d.types?.length > 0) setTypeId(d.types[0].id)
+        })
+        .catch(() => {})
+    }
+  }, [isDepositCategory, kind])
+
   useEffect(() => {
     setTypeId('')
     setSupplierId('')
@@ -246,6 +262,15 @@ export default function EntryView({
         }
         finalSupplierId = selectedSupplier.id
         finalCategory = selectedSupplier.name
+      } else if (isDepositCategory) {
+        // Deposit — use deposit types
+        const selectedType = depositTypes.find((t) => t.id === typeId)
+        if (!selectedType) {
+          toast.error('Please select a deposit type')
+          return
+        }
+        finalTypeId = selectedType.id
+        finalCategory = selectedType.name
       } else {
         // Regular Expense — expense head
         const selectedType = types.find((t) => t.id === typeId)
@@ -392,7 +417,7 @@ export default function EntryView({
                   {expenseCategoryId && (
                     <div>
                       <Label className="mb-1.5 block">
-                        {isSupplierCategory ? 'Supplier' : 'Expense Head'}
+                        {isSupplierCategory ? 'Supplier' : isDepositCategory ? 'Deposit Type' : 'Expense Head'}
                       </Label>
                       {isSupplierCategory ? (
                         suppliers.length === 0 ? (
@@ -409,6 +434,23 @@ export default function EntryView({
                             <SelectContent>
                               {suppliers.map((s) => (
                                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      ) : isDepositCategory ? (
+                        depositTypes.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
+                            <p className="text-xs text-neutral-500">No deposit types yet. Add them in Manage Types (Deposit tab).</p>
+                          </div>
+                        ) : (
+                          <Select value={typeId} onValueChange={setTypeId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select deposit type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {depositTypes.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
