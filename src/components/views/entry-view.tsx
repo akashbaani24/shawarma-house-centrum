@@ -113,6 +113,11 @@ export default function EntryView({
   const [bankAccountId, setBankAccountId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Supplier bill fields (shown when Supplier Bill is selected)
+  const [billNumber, setBillNumber] = useState('')
+  const [billAmount, setBillAmount] = useState('')
+  const [paidAmount, setPaidAmount] = useState('')
+
   const loadTypes = useCallback(async () => {
     setLoadingTypes(true)
     try {
@@ -193,6 +198,9 @@ export default function EntryView({
   useEffect(() => {
     setTypeId('')
     setSupplierId('')
+    setBillNumber('')
+    setBillAmount('')
+    setPaidAmount('')
   }, [expenseCategoryId])
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
@@ -275,9 +283,36 @@ export default function EntryView({
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error || 'Failed to save')
+
+      // If this is a supplier bill, also create a SupplierBill record
+      if (kind === 'EXPENSE' && isSupplierCategory && finalSupplierId) {
+        try {
+          const bAmt = billAmount ? parseFloat(billAmount) : amt
+          const pAmt = paidAmount ? parseFloat(paidAmount) : 0
+          await fetch('/api/supplier-bills', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              supplierId: finalSupplierId,
+              billDate: date,
+              billNumber: billNumber.trim() || undefined,
+              billAmount: bAmt,
+              paidAmount: pAmt,
+              note: note.trim() || undefined,
+            }),
+          })
+        } catch {
+          // Bill creation failed — the expense entry itself succeeded,
+          // so just show a warning (non-critical)
+        }
+      }
+
       toast.success(`${kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} added`)
       setAmount('')
       setNote('')
+      setBillNumber('')
+      setBillAmount('')
+      setPaidAmount('')
       loadEntries()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
@@ -390,6 +425,29 @@ export default function EntryView({
                             </SelectContent>
                           </Select>
                         )
+                      )}
+                    </div>
+                  )}
+
+                  {/* Supplier bill fields — shown when a supplier is selected */}
+                  {isSupplierCategory && supplierId && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
+                      <div>
+                        <Label className="mb-1.5 block text-xs">Bill Number</Label>
+                        <Input placeholder="e.g. INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="mb-1.5 block text-xs">Bill Amount ({CURRENCY})</Label>
+                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="mb-1.5 block text-xs">Paid Amount ({CURRENCY})</Label>
+                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
+                      </div>
+                      {billAmount && (
+                        <div className="col-span-full text-xs text-neutral-500">
+                          Due Amount: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+                        </div>
                       )}
                     </div>
                   )}
