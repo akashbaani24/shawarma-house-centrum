@@ -100,14 +100,19 @@ export default function ProfitLossView() {
 
   // Helper to render a row: label on left, amount on right
   // kind: 'item' | 'total' | 'grandtotal' | 'header' | 'subheader'
-  const Row = ({ label, amount, kind = 'item', negative = false, showCurrency = true }: {
+  // Parentheses "(...)" automatically wrap the amount when it is negative.
+  const Row = ({ label, amount, kind = 'item', showCurrency = true }: {
     label: string
     amount?: number
     kind?: 'item' | 'total' | 'grandtotal' | 'header' | 'subheader'
-    negative?: boolean
     showCurrency?: boolean
   }) => {
-    const amountStr = amount === undefined ? '' : (negative && amount > 0 ? `(${fmt(amount)})` : fmt(amount || 0))
+    const isNeg = typeof amount === 'number' && amount < 0
+    const amountStr = amount === undefined
+      ? ''
+      : isNeg
+        ? `(${fmt(Math.abs(amount))})`
+        : fmt(amount || 0)
     if (kind === 'header') {
       return (
         <div className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 px-2 py-1 border-y border-neutral-400 dark:border-neutral-600 print:border-black text-center">
@@ -141,46 +146,50 @@ export default function ProfitLossView() {
   }
 
   // ===== Excel/PDF export — builds a flat representation matching the report =====
+  // Helper: format an amount with currency prefix, wrapping negatives in (parentheses)
+  const fmtAmt = (amt: number): string =>
+    `${CURRENCY}${amt < 0 ? `(${fmt(Math.abs(amt))})` : fmt(amt)}`
+
   const buildExportRows = (): (string|number)[][] => {
     if (!report) return []
     const rows: (string|number)[][] = []
     const push = (a: string, b: string = '') => rows.push([a, b])
-    const itemRow = (cat: string, amt: number) => rows.push([cat, `${CURRENCY}${fmt(amt)}`])
+    const itemRow = (cat: string, amt: number) => rows.push([cat, fmtAmt(amt)])
 
     push('REVENUE', '')
     report.revenue.forEach((c) => itemRow(c.category, c.amount))
     if (report.totalExcess > 0) itemRow('Excess / Extra Cash', report.totalExcess)
-    push('TOTAL REVENUE', `${CURRENCY}${fmt(report.totalRevenue)}`)
+    push('TOTAL REVENUE', fmtAmt(report.totalRevenue))
     rows.push(['', ''])
 
     push('COST OF GOODS SOLD (COGS)', '')
     report.cogs.forEach((c) => itemRow(c.category, c.amount))
-    push('TOTAL COGS', `${CURRENCY}${fmt(report.totalCogs)}`)
-    push('GROSS PROFIT', `${CURRENCY}${fmt(report.grossProfit)}`)
+    push('TOTAL COGS', fmtAmt(report.totalCogs))
+    push('GROSS PROFIT', fmtAmt(report.grossProfit))
     rows.push(['', ''])
 
     push('OPERATING EXPENSES', '')
     report.operatingGroups.forEach((g) => {
       push(g.label, '')
       g.items.forEach((c) => itemRow(c.category, c.amount))
-      push(`Total ${g.label}`, `${CURRENCY}${fmt(g.total)}`)
+      push(`Total ${g.label}`, fmtAmt(g.total))
       rows.push(['', ''])
     })
-    push('TOTAL OPERATING EXPENSES', `${CURRENCY}${fmt(report.totalOperating)}`)
-    push('OPERATING PROFIT / (LOSS)', `${CURRENCY}${fmt(report.operatingProfit)}`)
+    push('TOTAL OPERATING EXPENSES', fmtAmt(report.totalOperating))
+    push('OPERATING PROFIT / (LOSS)', fmtAmt(report.operatingProfit))
     rows.push(['', ''])
 
     push('OTHER LOSSES / ADJUSTMENTS', '')
     report.otherLosses.forEach((c) => itemRow(c.category, c.amount))
-    push('TOTAL OTHER LOSSES', `${CURRENCY}${fmt(report.totalOtherLosses)}`)
+    push('TOTAL OTHER LOSSES', fmtAmt(report.totalOtherLosses))
     rows.push(['', ''])
 
     push('NET PROFIT / (LOSS)', '')
-    push(isProfit ? 'NET PROFIT' : 'NET LOSS', `${CURRENCY}${fmt(Math.abs(report.netProfit))}`)
+    push(isProfit ? 'NET PROFIT' : 'NET LOSS', fmtAmt(report.netProfit))
     rows.push(['', ''])
 
     push('NOT INCLUDED IN PROFIT & LOSS', '')
-    push('Bank / bKash Deposits (Transfers)', `${CURRENCY}${fmt(report.totalDeposits)}`)
+    push('Bank / bKash Deposits (Transfers)', fmtAmt(report.totalDeposits))
     push('(Internal Fund Transfer - Not an Expense)', '')
     return rows
   }
@@ -349,7 +358,7 @@ export default function ProfitLossView() {
                   <Row label="TOTAL COGS" amount={report.totalCogs} kind="total" />
                 </>
               )}
-              <Row label="GROSS PROFIT" amount={report.grossProfit} kind="grandtotal" negative />
+              <Row label="GROSS PROFIT" amount={report.grossProfit} kind="grandtotal" />
             </div>
 
             {/* ===== OPERATING EXPENSES ===== */}
@@ -375,7 +384,6 @@ export default function ProfitLossView() {
                 label={isOpProfit ? 'OPERATING PROFIT' : 'OPERATING LOSS'}
                 amount={report.operatingProfit}
                 kind="grandtotal"
-                negative
               />
             </div>
 
