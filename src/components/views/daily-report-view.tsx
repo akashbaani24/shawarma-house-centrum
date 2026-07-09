@@ -356,11 +356,11 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
-                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
-                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
                           </TableRow>
@@ -448,11 +448,11 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
-                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
-                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
                           </TableRow>
@@ -487,11 +487,11 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
-                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
-                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
                           </TableRow>
@@ -526,11 +526,11 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
-                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                  {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
-                              {e.note ? <span className="text-neutral-400"> · {e.note}</span> : null}
+                              {e.note ? <span className="text-neutral-600 dark:text-neutral-400 print:text-neutral-700"> · {e.note}</span> : null}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</TableCell>
                           </TableRow>
