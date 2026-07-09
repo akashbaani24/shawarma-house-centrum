@@ -89,7 +89,6 @@ export default function ExpenseDetailsView() {
   const [to, setTo] = useState(todayStr())
   const [report, setReport] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
-  const pagination = usePagination(filteredCount)
   const [searchText, setSearchText] = useState('')
   const filteredEntries = (report?.entries ?? []).filter((e) => {
     if (!searchText.trim()) return true
@@ -100,6 +99,7 @@ export default function ExpenseDetailsView() {
       e.date.includes(q)
   })
   const filteredCount = filteredEntries.length
+  const pagination = usePagination(filteredCount)
   const paginatedEntries = filteredEntries.slice(pagination.startIndex, pagination.endIndex)
 
   const load = useCallback(async () => {
