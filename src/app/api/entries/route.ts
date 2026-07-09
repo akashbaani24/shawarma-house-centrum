@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { libsql } from '@/lib/db'
 
-// GET /api/entries?date=YYYY-MM-DD          -> entries for one day
-// GET /api/entries?kind=INCOME              -> all entries of a kind (recent 100)
-// GET /api/entries?kind=EXPENSE&source=BRANCH -> expenses filtered by source
+// GET /api/entries?date=&kind=&source=  (direct libsql for speed)
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -16,31 +14,23 @@ export async function GET(req: NextRequest) {
   const kind = searchParams.get('kind')
   const source = searchParams.get('source')
 
-  const where: { date?: string; kind?: string; source?: string } = {}
-  if (date) where.date = date
-  if (kind && (kind === 'INCOME' || kind === 'EXPENSE' || kind === 'INVEST')) where.kind = kind
-  if (source && (source === 'BRANCH' || source === 'OFFICE')) where.source = source
+  try {
+    let sql = 'SELECT id, kind, category, amount, note, date, "paymentMethod", source FROM "Entry" WHERE 1=1'
+    const args: (string)[] = []
+    if (date) { sql += ' AND date = ?'; args.push(date) }
+    if (kind && ['INCOME', 'EXPENSE', 'INVEST'].includes(kind)) { sql += ' AND kind = ?'; args.push(kind) }
+    if (source && ['BRANCH', 'OFFICE'].includes(source)) { sql += ' AND source = ?'; args.push(source) }
+    sql += ' ORDER BY date DESC, "createdAt" DESC LIMIT 100'
 
-  const entries = await db.entry.findMany({
-    where,
-    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-    take: 100,
-    select: {
-      id: true,
-      kind: true,
-      category: true,
-      amount: true,
-      note: true,
-      date: true,
-      paymentMethod: true,
-      source: true,
-      bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
-    },
-  })
-  return NextResponse.json({ entries })
+    const res = await libsql.execute({ sql, args })
+    return NextResponse.json({ entries: res.rows })
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed to load entries' }, { status: 500 })
+  }
 }
 
-// POST /api/entries  { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source }
+// POST /api/entries  (uses Prisma for writes)
+import { db } from '@/lib/db'
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -54,38 +44,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
     }
     const amt = typeof amount === 'number' ? amount : parseFloat(amount)
-    if (isNaN(amt) || amt <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
-    }
+    if (isNaN(amt) || amt <= 0) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     const cat = String(category ?? '').trim()
-    if (!cat) {
-      return NextResponse.json({ error: 'Category is required' }, { status: 400 })
-    }
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
-    }
+    if (!cat) return NextResponse.json({ error: 'Category is required' }, { status: 400 })
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
 
     const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK']
     const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
-
-    // source: BRANCH (default) or OFFICE
     const src = source === 'OFFICE' ? 'OFFICE' : 'BRANCH'
 
     let finalTypeId: string | null = null
     if (typeId) {
       const type = await db.entryType.findUnique({ where: { id: typeId } })
-      if (type && type.kind === kind) {
-        finalTypeId = typeId
-      }
+      if (type && type.kind === kind) finalTypeId = typeId
     }
-
     let finalBankAccountId: string | null = null
     if (bankAccountId && (method === 'BANK' || method === 'MOBILE_BANK')) {
       const acct = await db.bankAccount.findUnique({ where: { id: bankAccountId } })
       if (acct) finalBankAccountId = bankAccountId
     }
-
-    // Expense two-level dropdown: validate expenseCategoryId + supplierId
     let finalExpenseCategoryId: string | null = null
     if (expenseCategoryId) {
       const ec = await db.expenseCategory.findUnique({ where: { id: expenseCategoryId } })
@@ -101,13 +78,10 @@ export async function POST(req: NextRequest) {
       data: {
         createdById: session.user.id,
         typeId: finalTypeId,
-        kind,
-        category: cat,
+        kind, category: cat,
         amount: Math.round(amt * 100) / 100,
         note: note?.trim() || null,
-        date,
-        paymentMethod: method,
-        source: src,
+        date, paymentMethod: method, source: src,
         bankAccountId: finalBankAccountId,
         expenseCategoryId: finalExpenseCategoryId,
         supplierId: finalSupplierId,
