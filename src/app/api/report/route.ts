@@ -117,8 +117,9 @@ export async function GET(req: NextRequest) {
     for (const r of denomRows) {
       if (VALID_DENOMS.includes(r.denomination)) denomMap[r.denomination] = r.count
     }
-    const denomCounted = denomRows.length > 0
     const denomTotal = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
+    // Only consider denomination "counted" if at least one non-zero count exists
+    const denomCounted = denomRows.length > 0 && denomTotal > 0
 
     // Calculated closing = Opening + Income - Expense (what SHOULD be in the cash box)
     const calculatedClosing = openingBalance + totalIncome - totalExpense
