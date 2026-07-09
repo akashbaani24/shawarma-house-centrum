@@ -260,7 +260,7 @@ export default function SupplierReportView() {
 
             {/* Bills table */}
             <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-x-auto print:border-black">
-              <Table className="text-[11px] sm:text-sm">
+              <Table className="text-[12px] sm:text-sm">
                 <TableHeader>
                   <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
                     <TableHead className="h-8 px-2 text-xs font-semibold whitespace-nowrap">Bill Date</TableHead>
@@ -312,11 +312,11 @@ export default function SupplierReportView() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
               <div className="text-neutral-500">
                 {supplierId === 'all' ? 'All Suppliers' : report.suppliers.find((s) => s.id === supplierId)?.name || '—'}
               </div>
-              <div className="text-neutral-400 text-[10px]">
+              <div className="text-neutral-400 text-[11px]">
                 Generated on {new Date().toLocaleString('en-GB')}
               </div>
             </div>

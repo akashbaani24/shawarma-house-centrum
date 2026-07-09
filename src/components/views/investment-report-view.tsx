@@ -255,21 +255,21 @@ export default function InvestmentReportView() {
             {/* Category summary */}
             <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black mb-4">
               <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                   Summary by Category
                 </span>
               </div>
-              <Table className="text-[11px]">
+              <Table className="text-[12px]">
                 <TableHeader>
                   <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {report.byCategory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[11px]">
+                      <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[12px]">
                         No investment entries in this period
                       </TableCell>
                     </TableRow>
@@ -282,7 +282,7 @@ export default function InvestmentReportView() {
                     ))
                   )}
                   <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                    <TableCell className="py-1 px-2 text-[11px] font-bold text-right">Total -</TableCell>
+                    <TableCell className="py-1 px-2 text-[12px] font-bold text-right">Total -</TableCell>
                     <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -292,26 +292,26 @@ export default function InvestmentReportView() {
             {/* Detailed entries table */}
             <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
               <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                   All Investment Entries
                 </span>
               </div>
-              <Table className="text-[11px]">
+              <Table className="text-[12px]">
                 <TableHeader>
                   <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Date</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Method</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Account Name</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Account Number</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Note</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Method</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Account Name</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Account Number</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {report.entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
+                      <TableCell colSpan={7} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
                         No investment entries in this period
                       </TableCell>
                     </TableRow>
@@ -321,7 +321,7 @@ export default function InvestmentReportView() {
                         <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
                         <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
                         <TableCell className="py-1 px-2">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                             e.paymentMethod === 'CASH'
                               ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
                               : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black'
@@ -339,7 +339,7 @@ export default function InvestmentReportView() {
                     ))
                   )}
                   <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
-                    <TableCell colSpan={6} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
+                    <TableCell colSpan={6} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
                     <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -352,12 +352,12 @@ export default function InvestmentReportView() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
               <div>
                 <span className="text-neutral-500">Prepared by: </span>
                 <span className="font-semibold">{report.entries.length > 0 && report.entries[0].creator ? (report.entries[0].creator.name || report.entries[0].creator.email) : '—'}</span>
               </div>
-              <div className="text-neutral-400 text-[10px]">
+              <div className="text-neutral-400 text-[11px]">
                 Generated on {new Date().toLocaleString('en-GB')}
               </div>
             </div>

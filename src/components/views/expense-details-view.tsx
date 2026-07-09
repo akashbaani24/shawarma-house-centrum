@@ -236,36 +236,36 @@ export default function ExpenseDetailsView() {
         </div>
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
-            <Card className="border-rose-200 bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-900">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-rose-700 dark:text-rose-400">Total Expense</CardTitle>
-                <TrendingDown className="h-4 w-4 text-rose-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-rose-700 dark:text-rose-400">{CURRENCY}{fmt(report.total)}</div>
-                <p className="text-xs text-neutral-500 mt-1">{report.entries.length} transactions</p>
+          {/* Summary cards — compact */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
+            <Card className="border-rose-200 bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-900 py-2">
+              <CardContent className="py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-rose-700 dark:text-rose-400">Total Expense</span>
+                  <TrendingDown className="h-4 w-4 text-rose-600" />
+                </div>
+                <div className="text-lg font-bold text-rose-700 dark:text-rose-400 mt-0.5">{CURRENCY}{fmt(report.total)}</div>
+                <p className="text-[11px] text-neutral-500">{report.entries.length} transactions</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-neutral-500">Categories</CardTitle>
-                <Receipt className="h-4 w-4 text-neutral-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold">{report.byCategory.length}</div>
-                <p className="text-xs text-neutral-500 mt-1">distinct expense types</p>
+            <Card className="py-2">
+              <CardContent className="py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-neutral-500">Categories</span>
+                  <Receipt className="h-4 w-4 text-neutral-400" />
+                </div>
+                <div className="text-lg font-bold mt-0.5">{report.byCategory.length}</div>
+                <p className="text-[11px] text-neutral-500">distinct expense types</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-neutral-500">Days</CardTitle>
-                <Calendar className="h-4 w-4 text-neutral-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold">{report.byDate.length}</div>
-                <p className="text-xs text-neutral-500 mt-1">days with expenses</p>
+            <Card className="py-2">
+              <CardContent className="py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-neutral-500">Days</span>
+                  <Calendar className="h-4 w-4 text-neutral-400" />
+                </div>
+                <div className="text-lg font-bold mt-0.5">{report.byDate.length}</div>
+                <p className="text-[11px] text-neutral-500">days with expenses</p>
               </CardContent>
             </Card>
           </div>
@@ -291,21 +291,21 @@ export default function ExpenseDetailsView() {
               {/* Category summary */}
               <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
                 <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                  <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                     Summary by Category
                   </span>
                 </div>
-                <Table className="text-[11px]">
+                <Table className="text-[12px]">
                   <TableHeader>
                     <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                      <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
-                      <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
+                      <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                      <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {report.byCategory.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[11px]">
+                        <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[12px]">
                           No expense entries in this period
                         </TableCell>
                       </TableRow>
@@ -318,44 +318,7 @@ export default function ExpenseDetailsView() {
                       ))
                     )}
                     <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                      <TableCell className="py-1 px-2 text-[11px] font-bold text-right">Total -</TableCell>
-                      <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Payment method summary */}
-              <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
-                <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                    Summary by Payment Method
-                  </span>
-                </div>
-                <Table className="text-[11px]">
-                  <TableHeader>
-                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                      <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Method</TableHead>
-                      <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.byMethod.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[11px]">
-                          No data
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      report.byMethod.map((m) => (
-                        <TableRow key={m.method} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                          <TableCell className="py-1 px-2">{METHOD_LABELS[m.method] ?? m.method}</TableCell>
-                          <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(m.amount)}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                    <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                      <TableCell className="py-1 px-2 text-[11px] font-bold text-right">Total -</TableCell>
+                      <TableCell className="py-1 px-2 text-[12px] font-bold text-right">Total -</TableCell>
                       <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                     </TableRow>
                   </TableBody>
@@ -366,25 +329,25 @@ export default function ExpenseDetailsView() {
             {/* Detailed entries table */}
             <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
               <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                   All Expense Entries
                 </span>
               </div>
-              <Table className="text-[11px]">
+              <Table className="text-[12px]">
                 <TableHeader>
                   <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Date</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Source</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Method</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Note</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Source</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Method</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {report.entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
+                      <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
                         No expense entries in this period
                       </TableCell>
                     </TableRow>
@@ -394,7 +357,7 @@ export default function ExpenseDetailsView() {
                         <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
                         <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
                         <TableCell className="py-1 px-2">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                             e.source === 'OFFICE'
                               ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
                               : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
@@ -403,7 +366,7 @@ export default function ExpenseDetailsView() {
                           </span>
                         </TableCell>
                         <TableCell className="py-1 px-2">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                             e.paymentMethod === 'CASH'
                               ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
                               : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400'
@@ -420,7 +383,7 @@ export default function ExpenseDetailsView() {
                     ))
                   )}
                   <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
-                    <TableCell colSpan={5} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
+                    <TableCell colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
                     <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -433,12 +396,12 @@ export default function ExpenseDetailsView() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
               <div>
                 <span className="text-neutral-500">Prepared by: </span>
                 <span className="font-semibold">{report.entries.length > 0 && report.entries[0].creator ? (report.entries[0].creator.name || report.entries[0].creator.email) : '—'}</span>
               </div>
-              <div className="text-neutral-400 text-[10px]">
+              <div className="text-neutral-400 text-[11px]">
                 Generated on {new Date().toLocaleString('en-GB')}
               </div>
             </div>

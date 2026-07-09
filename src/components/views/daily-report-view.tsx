@@ -358,11 +358,11 @@ export default function DailyReportView() {
                 {/* Opening Balance */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Opening Balance
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       <TableRow className="border-neutral-100 dark:border-neutral-800/50 print:border-black">
                         <TableCell className="py-1.5 px-2 font-medium">
@@ -383,21 +383,21 @@ export default function DailyReportView() {
                 {/* Income entries */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Income / Receipts
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableHeader>
                       <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Particulars</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Particulars</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {report.incomeEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[11px]">
+                          <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[12px]">
                             No income entries for this day
                           </TableCell>
                         </TableRow>
@@ -407,7 +407,7 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                <span className="text-[10px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
                                   {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
@@ -418,7 +418,7 @@ export default function DailyReportView() {
                         ))
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-bold text-right">Total Income -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-bold text-right">Total Income -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.totalIncome)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -429,18 +429,18 @@ export default function DailyReportView() {
                 {report.excessEntries && report.excessEntries.length > 0 && (
                   <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                     <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                      <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                         Excess / Extra Cash
                       </span>
                     </div>
-                    <Table className="text-[11px]">
+                    <Table className="text-[12px]">
                       <TableBody>
                         {report.excessEntries.map((e) => (
                           <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                <span className="text-[10px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
                                   {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
@@ -450,7 +450,7 @@ export default function DailyReportView() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
-                          <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Excess -</TableCell>
+                          <TableCell className="py-1 px-2 text-[12px] font-semibold text-right">Total Excess -</TableCell>
                           <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalExcess || 0)}</TableCell>
                         </TableRow>
                       </TableBody>
@@ -461,22 +461,22 @@ export default function DailyReportView() {
                 {/* Denomination of Closing Cash */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200 flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Denomination of Closing Cash
                     </span>
                     {report.denomNotEntered && (
-                      <span className="text-[9px] text-amber-600 dark:text-amber-400 print:text-black">
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 print:text-black">
                         ⚠ Not counted — using calculated closing
                       </span>
                     )}
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableHeader>
                       <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Denomination</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-center w-8">X</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-16">Count</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-24">Amount</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Denomination</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-center w-8">X</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-16">Count</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -495,7 +495,7 @@ export default function DailyReportView() {
                                 value={raw}
                                 onChange={(e) => updateDenom(denom, e.target.value)}
                                 placeholder="0"
-                                className="h-6 text-right text-[11px] px-1 border-0 bg-transparent focus:bg-neutral-50 dark:focus:bg-neutral-900 tabular-nums print:hidden"
+                                className="h-6 text-right text-[12px] px-1 border-0 bg-transparent focus:bg-neutral-50 dark:focus:bg-neutral-900 tabular-nums print:hidden"
                               />
                               <span className="hidden print:block text-right tabular-nums">{count || ''}</span>
                             </TableCell>
@@ -504,7 +504,7 @@ export default function DailyReportView() {
                         )
                       })}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell colSpan={3} className="py-1 px-2 text-[11px] font-bold text-right">
+                        <TableCell colSpan={3} className="py-1 px-2 text-[12px] font-bold text-right">
                           Total Cash in Hand -
                         </TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(liveDenomTotal)}</TableCell>
@@ -519,15 +519,15 @@ export default function DailyReportView() {
                 {/* Sub-section: Expenses */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Expenses
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       {report.expensesEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[12px]">
                             No expense entries
                           </TableCell>
                         </TableRow>
@@ -537,7 +537,7 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                <span className="text-[10px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
                                   {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
@@ -548,7 +548,7 @@ export default function DailyReportView() {
                         ))
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Expenses -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-semibold text-right">Total Expenses -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalExpenses)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -558,15 +558,15 @@ export default function DailyReportView() {
                 {/* Sub-section: Payments */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Payments
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       {report.paymentsEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[12px]">
                             No payment entries
                           </TableCell>
                         </TableRow>
@@ -576,7 +576,7 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                <span className="text-[10px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
                                   {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
@@ -587,7 +587,7 @@ export default function DailyReportView() {
                         ))
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Payments -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-semibold text-right">Total Payments -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalPayments)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -597,15 +597,15 @@ export default function DailyReportView() {
                 {/* Sub-section: Deposits */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Deposits
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       {report.depositsEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[11px]">
+                          <TableCell colSpan={2} className="py-2 px-2 text-center text-neutral-400 text-[12px]">
                             No deposit entries
                           </TableCell>
                         </TableRow>
@@ -615,7 +615,7 @@ export default function DailyReportView() {
                             <TableCell className="py-1 px-2">
                               {e.category}
                               {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                                <span className="text-[9px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
+                                <span className="text-[10px] ml-1 px-1 py-0.5 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black font-medium">
                                   {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}{e.bankAccount ? `: ${e.bankAccount.bankName} (${e.bankAccount.accountNumber})` : ''}
                                 </span>
                               )}
@@ -626,7 +626,7 @@ export default function DailyReportView() {
                         ))
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Deposits -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-semibold text-right">Total Deposits -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalDeposits)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -637,11 +637,11 @@ export default function DailyReportView() {
                 {report.shortageEntries && report.shortageEntries.length > 0 && (
                   <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-white dark:bg-neutral-950 print:border-black">
                     <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                      <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                         Cash Shortage
                       </span>
                     </div>
-                    <Table className="text-[11px]">
+                    <Table className="text-[12px]">
                       <TableBody>
                         {report.shortageEntries.map((e) => (
                           <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
@@ -653,7 +653,7 @@ export default function DailyReportView() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t border-neutral-200 dark:border-neutral-700 print:border-black">
-                          <TableCell className="py-1 px-2 text-[11px] font-semibold text-right">Total Shortage -</TableCell>
+                          <TableCell className="py-1 px-2 text-[12px] font-semibold text-right">Total Shortage -</TableCell>
                           <TableCell className="py-1 px-2 text-right tabular-nums font-semibold">{fmt(report.totalShortage || 0)}</TableCell>
                         </TableRow>
                       </TableBody>
@@ -664,11 +664,11 @@ export default function DailyReportView() {
                 {/* Calculated closing (info) — visible in print */}
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden bg-neutral-50 dark:bg-neutral-900/30 print:border-black">
                   <div className="px-2 py-1 border-b border-neutral-200 dark:border-neutral-800 print:border-black">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-500 flex items-center gap-1 print:text-black">
                       <Info className="h-3 w-3" /> Calculated Closing (auto)
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       <TableRow className="border-neutral-100 dark:border-neutral-800/50">
                         <TableCell className="py-1.5 px-2 font-medium">
@@ -689,7 +689,7 @@ export default function DailyReportView() {
             <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3 mt-3">
               {/* Left totals: Income side */}
               <div className="border-2 border-neutral-800 dark:border-neutral-200 print:border-black rounded-sm overflow-hidden">
-                <Table className="text-[11px]">
+                <Table className="text-[12px]">
                   <TableBody>
                     <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
                       <TableCell className="py-1 px-2 font-medium">Opening Balance</TableCell>
@@ -717,7 +717,7 @@ export default function DailyReportView() {
 
               {/* Right totals: Expense side breakdown */}
               <div className="border-2 border-neutral-800 dark:border-neutral-200 print:border-black rounded-sm overflow-hidden">
-                <Table className="text-[11px]">
+                <Table className="text-[12px]">
                   <TableBody>
                     <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
                       <TableCell className="py-1 px-2 font-medium">Total Expenses</TableCell>
@@ -753,7 +753,7 @@ export default function DailyReportView() {
             </div>
 
             {/* Balance status inside report (printable) */}
-            <div className="mt-3 text-center text-[11px]">
+            <div className="mt-3 text-center text-[12px]">
               {liveIsBalanced ? (
                 <span className="text-emerald-600 font-medium">
                   ✓ সঠিক — উভয় পাশ মিলছে ({CURRENCY}{fmt(liveLeftTotal)})
@@ -766,7 +766,7 @@ export default function DailyReportView() {
             </div>
 
             {/* Next day opening info */}
-            <div className="mt-3 text-center text-[10px] text-neutral-400 print:hidden">
+            <div className="mt-3 text-center text-[11px] text-neutral-400 print:hidden">
               আগামী দিনের Opening Balance হবে: {CURRENCY}{fmt(report.calculatedClosing)} (আজকের Calculated Closing)
             </div>
 
@@ -776,7 +776,7 @@ export default function DailyReportView() {
             </div>
 
             {/* Prepared by footer (always visible, printable) */}
-            <div className="mt-3 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-3 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
               <div>
                 <span className="text-neutral-500">Prepared by: </span>
                 <span className="font-semibold">
@@ -785,7 +785,7 @@ export default function DailyReportView() {
                     : report.currentUser}
                 </span>
               </div>
-              <div className="text-neutral-400 text-[10px]">
+              <div className="text-neutral-400 text-[11px]">
                 Generated on {new Date().toLocaleString('en-GB')}
               </div>
             </div>

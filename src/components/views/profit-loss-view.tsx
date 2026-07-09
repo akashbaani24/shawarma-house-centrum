@@ -218,11 +218,11 @@ export default function ProfitLossView() {
               <div>
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Income Breakdown
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       {report.incomeByCategory.length === 0 ? (
                         <TableRow><TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400">No income in this period</TableCell></TableRow>
@@ -241,7 +241,7 @@ export default function ProfitLossView() {
                         </TableRow>
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-bold">Total Income -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-bold">Total Income -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
                           {fmt(report.totalIncome + report.totalExcess)}
                         </TableCell>
@@ -255,11 +255,11 @@ export default function ProfitLossView() {
               <div>
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
                   <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
+                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Expense Breakdown
                     </span>
                   </div>
-                  <Table className="text-[11px]">
+                  <Table className="text-[12px]">
                     <TableBody>
                       {report.expenseByCategory.length === 0 ? (
                         <TableRow><TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400">No expenses in this period</TableCell></TableRow>
@@ -278,7 +278,7 @@ export default function ProfitLossView() {
                         </TableRow>
                       )}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[11px] font-bold">Total Expenses -</TableCell>
+                        <TableCell className="py-1 px-2 text-[12px] font-bold">Total Expenses -</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-400">
                           {fmt(report.totalExpenses + report.totalShortage)}
                         </TableCell>
@@ -293,10 +293,10 @@ export default function ProfitLossView() {
             <div className={`mt-4 rounded-sm border-2 p-4 ${isProfit ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/20 print:border-black' : 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 print:border-black'}`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-neutral-500">
                     {isProfit ? 'Net Profit' : 'Net Loss'}
                   </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">
+                  <div className="text-[11px] text-neutral-400 mt-0.5">
                     Total Income ({CURRENCY}{fmt(report.totalIncome + report.totalExcess)}) − Total Expenses ({CURRENCY}{fmt(report.totalExpenses + report.totalShortage)})
                   </div>
                 </div>
@@ -307,9 +307,9 @@ export default function ProfitLossView() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
               <div className="text-neutral-500">Deposits (transfers): {CURRENCY}{fmt(report.totalDeposits)} — not counted as expense</div>
-              <div className="text-neutral-400 text-[10px]">Generated on {new Date().toLocaleString('en-GB')}</div>
+              <div className="text-neutral-400 text-[11px]">Generated on {new Date().toLocaleString('en-GB')}</div>
             </div>
           </div>
 
