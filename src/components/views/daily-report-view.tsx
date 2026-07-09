@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Info,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -242,10 +244,54 @@ export default function DailyReportView() {
                 <span className="text-emerald-600">✓ Saved</span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => window.print()}>
                 <Printer className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Print</span>
               </Button>
+              {report && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const allEntries = [
+                      ...report.incomeEntries.map((e) => ['Income', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...(report.excessEntries || []).map((e) => ['Excess', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.expensesEntries.map((e) => ['Expense', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.paymentsEntries.map((e) => ['Payment', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.depositsEntries.map((e) => ['Deposit', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...(report.shortageEntries || []).map((e) => ['Shortage', e.category, fmt(e.amount)] as (string|number)[]),
+                    ]
+                    import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
+                      businessName: report.businessName,
+                      reportTitle: 'Branch Daily Report',
+                      dateRange: `Date: ${dateDisplay}`,
+                      columns: [{ header: 'Type', key: 'type' }, { header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],
+                      rows: allEntries,
+                      totalsRow: ['Total', '', fmt(report.totalIncome + (report.totalExcess || 0) - report.totalExpense)],
+                    }))
+                  }}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Excel</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const allEntries = [
+                      ...report.incomeEntries.map((e) => ['Income', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...(report.excessEntries || []).map((e) => ['Excess', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.expensesEntries.map((e) => ['Expense', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.paymentsEntries.map((e) => ['Payment', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...report.depositsEntries.map((e) => ['Deposit', e.category, fmt(e.amount)] as (string|number)[]),
+                      ...(report.shortageEntries || []).map((e) => ['Shortage', e.category, fmt(e.amount)] as (string|number)[]),
+                    ]
+                    import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                      businessName: report.businessName,
+                      reportTitle: 'Branch Daily Report',
+                      dateRange: `Date: ${dateDisplay}`,
+                      columns: [{ header: 'Type', key: 'type' }, { header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],
+                      rows: allEntries,
+                      totalsRow: ['Total', '', fmt(report.totalIncome + (report.totalExcess || 0) - report.totalExpense)],
+                    }))
+                  }}>
+                    <FileText className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">PDF</span>
+                  </Button>
+                </>
+              )}
               <Button size="sm" onClick={handleSaveDenom} disabled={savingDenom || !denomDirty}>
                 {savingDenom ? (
                   <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Saving...</>

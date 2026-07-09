@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Receipt, ChevronLeft, ChevronRight, Printer, Loader2, TrendingDown, Calendar } from 'lucide-react'
+import { Receipt, ChevronLeft, ChevronRight, Printer, Loader2, TrendingDown, Calendar, FileSpreadsheet, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 function todayStr(): string {
@@ -169,9 +169,39 @@ export default function ExpenseDetailsView() {
             <Label htmlFor="to-date" className="text-xs text-neutral-500">To</Label>
             <Input id="to-date" type="date" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} className="w-[150px]" />
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="mt-5">
-            <Printer className="h-4 w-4 mr-1" /> Print
-          </Button>
+          <div className="flex gap-2 mt-5">
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-1" /> Print
+            </Button>
+            {report && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
+                    businessName: report.businessName,
+                    reportTitle: 'Expense Details',
+                    dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
+                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Source', key: 'source' }, { header: 'Method', key: 'method' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
+                    rows: report.entries.map((e) => [e.date, e.category, e.source === 'OFFICE' ? 'Office' : 'Branch', e.paymentMethod, e.note || '', fmt(e.amount)]),
+                    totalsRow: ['Total', '', '', '', '', fmt(report.total)],
+                  }))
+                }}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                    businessName: report.businessName,
+                    reportTitle: 'Expense Details',
+                    dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
+                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Source', key: 'source' }, { header: 'Method', key: 'method' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
+                    rows: report.entries.map((e) => [e.date, e.category, e.source === 'OFFICE' ? 'Office' : 'Branch', e.paymentMethod, e.note || '', fmt(e.amount)]),
+                    totalsRow: ['Total', '', '', '', '', fmt(report.total)],
+                  }))
+                }}>
+                  <FileText className="h-4 w-4 mr-1" /> PDF
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

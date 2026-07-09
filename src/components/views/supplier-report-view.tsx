@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Truck, Printer, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Truck, Printer, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 function todayStr(): string {
@@ -172,6 +172,34 @@ export default function SupplierReportView() {
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
+            {report && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
+                    businessName: report.businessName,
+                    reportTitle: 'Supplier Report',
+                    dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
+                    columns: [{ header: 'Bill Date', key: 'billDate' }, { header: 'Supplier Name', key: 'supplier' }, { header: 'Bill Number', key: 'billNumber' }, { header: 'Bill Amount', key: 'billAmount' }, { header: 'Paid Amount', key: 'paidAmount' }, { header: 'Due Amount', key: 'dueAmount' }],
+                    rows: report.bills.map((b) => [b.billDate, b.supplier.name, b.billNumber || '', fmt(b.billAmount), fmt(b.paidAmount), fmt(b.billAmount - b.paidAmount)]),
+                    totalsRow: ['Total', '', '', fmt(report.totalBillAmount), fmt(report.totalPaidAmount), fmt(report.totalDueAmount)],
+                  }))
+                }}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                    businessName: report.businessName,
+                    reportTitle: 'Supplier Report',
+                    dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
+                    columns: [{ header: 'Bill Date', key: 'billDate' }, { header: 'Supplier Name', key: 'supplier' }, { header: 'Bill Number', key: 'billNumber' }, { header: 'Bill Amount', key: 'billAmount' }, { header: 'Paid Amount', key: 'paidAmount' }, { header: 'Due Amount', key: 'dueAmount' }],
+                    rows: report.bills.map((b) => [b.billDate, b.supplier.name, b.billNumber || '', fmt(b.billAmount), fmt(b.paidAmount), fmt(b.billAmount - b.paidAmount)]),
+                    totalsRow: ['Total', '', '', fmt(report.totalBillAmount), fmt(report.totalPaidAmount), fmt(report.totalDueAmount)],
+                  }))
+                }}>
+                  <FileText className="h-4 w-4 mr-1" /> PDF
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
