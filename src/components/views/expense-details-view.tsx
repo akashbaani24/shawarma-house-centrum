@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { usePagination, PaginationControls } from '@/components/pagination'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -88,6 +89,8 @@ export default function ExpenseDetailsView() {
   const [to, setTo] = useState(todayStr())
   const [report, setReport] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
+  const pagination = usePagination(report?.entries?.length ?? 0)
+  const paginatedEntries = report?.entries?.slice(pagination.startIndex, pagination.endIndex) ?? []
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -364,7 +367,7 @@ export default function ExpenseDetailsView() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    report.entries.map((e) => (
+                    paginatedEntries.map((e) => (
                       <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
                         <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
                         <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
@@ -400,6 +403,11 @@ export default function ExpenseDetailsView() {
                   </TableRow>
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Pagination */}
+            <div className="print:hidden">
+              <PaginationControls totalItems={report.entries.length} pagination={pagination} />
             </div>
 
             {/* Footer */}
