@@ -20,7 +20,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params
     const body = await req.json()
-    const { name, password, role, rights } = body ?? {}
+    const { name, email, password, role, rights } = body ?? {}
 
     const target = await db.user.findUnique({ where: { id } })
     if (!target) {
@@ -40,6 +40,17 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const data: Record<string, unknown> = {}
     if (typeof name === 'string' && name.trim()) data.name = name.trim()
+    if (typeof email === 'string' && email.trim()) {
+      // Check if email is already taken by another user
+      const emailNorm = email.trim().toLowerCase()
+      if (emailNorm !== target.email) {
+        const existing = await db.user.findUnique({ where: { email: emailNorm } })
+        if (existing) {
+          return NextResponse.json({ error: 'This username/email is already taken' }, { status: 409 })
+        }
+        data.email = emailNorm
+      }
+    }
     if (typeof password === 'string' && password.length >= 6) {
       data.password = await bcrypt.hash(password, 10)
     }
