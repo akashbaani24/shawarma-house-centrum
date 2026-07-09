@@ -13,7 +13,8 @@ function classifyExpenseCategory(category: string): 'EXPENSES' | 'PAYMENTS' | 'D
     c.includes('bank account') ||
     c.includes('card sales') ||
     c.includes('digital wallet') ||
-    c.includes('bkash no')
+    c.includes('bkash no') ||
+    c.includes('bkash mobile')
   ) {
     return 'DEPOSITS'
   }
