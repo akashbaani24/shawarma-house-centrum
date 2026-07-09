@@ -27,14 +27,19 @@ export async function GET(req: NextRequest) {
     // Fetch entries, denominations, business profile — all in parallel
     const [entriesRes, denomRes, logoRes] = await Promise.all([
       libsql.execute({
-        sql: 'SELECT id, kind, category, amount, note, paymentMethod, source, "createdById" FROM "Entry" WHERE date = ? AND source = ? AND kind IN (?, ?) ORDER BY "createdAt" ASC',
+        sql: `SELECT e.id, e.kind, e.category, e.amount, e.note, e."paymentMethod", e.source, e."createdById",
+              b."bankName", b."accountName", b."accountNumber"
+              FROM "Entry" e
+              LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
+              WHERE e.date = ? AND e.source = ? AND e.kind IN (?, ?)
+              ORDER BY e."createdAt" ASC`,
         args: [date, 'BRANCH', 'INCOME', 'EXPENSE'],
       }),
       libsql.execute({ sql: 'SELECT denomination, count FROM "Denomination" WHERE date = ?', args: [date] }),
       libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1'),
     ])
 
-    const entries = entriesRes.rows as { id: string; kind: string; category: string; amount: number; note: string | null; paymentMethod: string; source: string; createdById: string | null }[]
+    const entries = entriesRes.rows as { id: string; kind: string; category: string; amount: number; note: string | null; paymentMethod: string; source: string; createdById: string | null; bankName: string | null; accountName: string | null; accountNumber: string | null }[]
     const denomRows = denomRes.rows as { denomination: number; count: number }[]
     const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
@@ -103,6 +108,14 @@ export async function GET(req: NextRequest) {
     const shortageEntries = expenseEntries.filter((e) => classify(e.category) === 'SHORTAGE')
     const pureIncomeEntries = incomeEntries.filter((e) => classifyIncome(e.category) === 'INCOME')
     const excessEntries = incomeEntries.filter((e) => classifyIncome(e.category) === 'EXCESS')
+
+    // Map bank account fields to nested object for the view
+    const mapEntry = (e: typeof entries[0]) => ({
+      id: e.id, kind: e.kind, category: e.category, amount: e.amount,
+      note: e.note, paymentMethod: e.paymentMethod, source: e.source,
+      bankAccount: e.bankName ? { bankName: e.bankName, accountName: e.accountName, accountNumber: e.accountNumber } : null,
+    })
+
     const totalExpenses = expensesEntries.reduce((s, e) => s + e.amount, 0)
     const totalPayments = paymentsEntries.reduce((s, e) => s + e.amount, 0)
     const totalDeposits = depositsEntries.reduce((s, e) => s + e.amount, 0)
@@ -148,13 +161,13 @@ export async function GET(req: NextRequest) {
       openingBalance,
       openingSource,
       openingSourceDate,
-      incomeEntries: pureIncomeEntries,
-      expenseEntries,
-      expensesEntries,
-      paymentsEntries,
-      depositsEntries,
-      shortageEntries,
-      excessEntries,
+      incomeEntries: pureIncomeEntries.map(mapEntry),
+      expenseEntries: expenseEntries.map(mapEntry),
+      expensesEntries: expensesEntries.map(mapEntry),
+      paymentsEntries: paymentsEntries.map(mapEntry),
+      depositsEntries: depositsEntries.map(mapEntry),
+      shortageEntries: shortageEntries.map(mapEntry),
+      excessEntries: excessEntries.map(mapEntry),
       totalIncome: totalPureIncome,
       totalExpense,
       totalExpenses,

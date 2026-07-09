@@ -72,6 +72,10 @@ const TOP_NAV: NavItem[] = [
   { key: 'expense-branch', label: 'Expense By Branch', icon: ArrowDownCircle },
   { key: 'expense-office', label: 'Expense By Office', icon: ArrowDownCircle },
   { key: 'invest', label: 'Invest Entry', icon: TrendingUp },
+]
+
+// Setup sub-menu items (under "Setup" group)
+const SETUP_NAV: NavItem[] = [
   { key: 'suppliers', label: 'Supplier Entry', icon: Truck },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
@@ -122,10 +126,11 @@ function AppShellInner({
   }
 
   const visibleTop = TOP_NAV.filter(canSee)
+  const visibleSetup = SETUP_NAV.filter(canSee)
   const visibleReports = REPORT_NAV.filter(canSee)
   const visibleAdmin = ADMIN_NAV.filter(canSee)
 
-  const allVisible = [...visibleTop, ...visibleReports, ...visibleAdmin]
+  const allVisible = [...visibleTop, ...visibleSetup, ...visibleReports, ...visibleAdmin]
 
   // Read the current view from the URL query param
   const paramView = searchParams.get('view') as ViewKey | null
@@ -142,6 +147,9 @@ function AppShellInner({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [reportsOpen, setReportsOpen] = useState(
     visibleReports.some((n) => n.key === view),
+  )
+  const [setupOpen, setSetupOpen] = useState(
+    visibleSetup.some((n) => n.key === view),
   )
 
   const displayName = user.businessName || user.name || 'Daily Report'
@@ -185,6 +193,7 @@ function AppShellInner({
   }
 
   const isReportActive = visibleReports.some((n) => n.key === view)
+  const isSetupActive = visibleSetup.some((n) => n.key === view)
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
@@ -226,6 +235,54 @@ function AppShellInner({
             {/* Nav */}
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {visibleTop.map(renderNavItem)}
+
+              {/* Setup group (collapsible) */}
+              {visibleSetup.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setSetupOpen((o) => !o)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isSetupActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
+                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                    }`}
+                  >
+                    <Settings className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">Setup</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${setupOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {setupOpen && (
+                    <div className="mt-1 ml-3 pl-3 border-l border-neutral-200 dark:border-neutral-800 space-y-1">
+                      {visibleSetup.map((item) => {
+                        const Icon = item.icon
+                        const active = view === item.key
+                        const href = `/?view=${item.key}`
+                        return (
+                          <a
+                            key={item.key}
+                            href={href}
+                            onClick={(e) => {
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return
+                              e.preventDefault()
+                              handleNav(item.key)
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                              active
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span>{item.label}</span>
+                          </a>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Reports group (collapsible) */}
               {visibleReports.length > 0 && (
