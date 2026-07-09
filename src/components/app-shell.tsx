@@ -290,7 +290,7 @@ function AppShellInner({
 
         {/* Main content */}
         <main className="flex-1 md:ml-64 min-w-0">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
             {view === 'dashboard' && <DashboardView onNavigate={handleNav} />}
             {view === 'income' && <EntryView kind="INCOME" />}
             {view === 'expense-branch' && <EntryView kind="EXPENSE" source="BRANCH" title="Expense By Branch" />}
