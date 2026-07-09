@@ -72,6 +72,9 @@ export async function DELETE(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  if (session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Admin access required to delete' }, { status: 403 })
+  }
   try {
     const { searchParams } = new URL(req.url)
     const date = searchParams.get('date')

@@ -34,6 +34,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  if (session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Admin access required to delete' }, { status: 403 })
+  }
   try {
     const { id } = await params
     await db.supplier.delete({ where: { id } })

@@ -237,10 +237,10 @@ export default function SupplierEntryView() {
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-0 group-hover:opacity-100" onClick={() => openEditDialog(s)} aria-label="Edit">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-60 hover:opacity-100" onClick={() => openEditDialog(s)} aria-label="Edit">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100" onClick={() => handleDelete(s)} aria-label="Delete">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100" onClick={() => handleDelete(s)} aria-label="Delete">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>

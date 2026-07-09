@@ -115,7 +115,7 @@ export default function ManageTypesView() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
+              className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
               onClick={() => handleDelete(t.id, t.name)}
               aria-label="Delete type"
             >

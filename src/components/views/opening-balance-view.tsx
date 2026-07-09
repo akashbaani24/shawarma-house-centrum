@@ -241,7 +241,7 @@ export default function OpeningBalanceView() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 text-neutral-300 hover:text-rose-600 opacity-0 group-hover:opacity-100"
+                            className="h-6 w-6 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
                             onClick={() => handleDelete(ob.date)}
                             aria-label="Delete"
                           >
