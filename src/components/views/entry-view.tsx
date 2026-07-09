@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -134,10 +134,16 @@ export default function EntryView({
     }
   }, [kind])
 
+  // Entry list: date filter + search
+  const [filterDate, setFilterDate] = useState<string>('') // empty = all dates
+  const [searchText, setSearchText] = useState<string>('')
+
   const loadEntries = useCallback(async () => {
     setLoadingEntries(true)
     try {
-      const res = await fetch(`/api/entries?kind=${kind}&source=${source}`, { cache: 'no-store' })
+      let url = `/api/entries?kind=${kind}&source=${source}`
+      if (filterDate) url += `&date=${filterDate}`
+      const res = await fetch(url, { cache: 'no-store' })
       const d = await res.json()
       if (res.ok) setEntries(d.entries)
     } catch {
@@ -145,7 +151,7 @@ export default function EntryView({
     } finally {
       setLoadingEntries(false)
     }
-  }, [kind, source])
+  }, [kind, source, filterDate])
 
   const loadBankAccounts = useCallback(async () => {
     try {
@@ -364,7 +370,20 @@ export default function EntryView({
     }
   }
 
-  const total = entries.reduce((s, e) => s + e.amount, 0)
+  // Filter entries by search text (client-side, on the loaded entries)
+  const filteredEntries = useMemo(() => {
+    if (!searchText.trim()) return entries
+    const q = searchText.toLowerCase().trim()
+    return entries.filter(
+      (e) =>
+        e.category.toLowerCase().includes(q) ||
+        (e.note?.toLowerCase().includes(q) ?? false) ||
+        String(e.amount).includes(q) ||
+        e.date.includes(q),
+    )
+  }, [entries, searchText])
+
+  const total = filteredEntries.reduce((s, e) => s + e.amount, 0)
 
   return (
     <div className="space-y-6">
@@ -631,10 +650,38 @@ export default function EntryView({
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Recent {isIncome ? 'Incomes' : 'Expenses'}</CardTitle>
+              <CardTitle className="text-base">{isIncome ? 'Incomes' : 'Expenses'}</CardTitle>
               <span className={`text-sm font-semibold ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                 {CURRENCY}{fmt(total)}
               </span>
+            </div>
+            {/* Date filter + Search */}
+            <div className="flex gap-2 mt-3">
+              <Input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="w-[140px] text-xs"
+                aria-label="Filter by date"
+              />
+              {filterDate && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-neutral-400 px-2"
+                  onClick={() => setFilterDate('')}
+                >
+                  Clear date
+                </Button>
+              )}
+              <Input
+                type="text"
+                placeholder="Search by category, note, amount..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="flex-1 text-xs"
+                aria-label="Search entries"
+              />
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -642,13 +689,15 @@ export default function EntryView({
               <div className="py-12 text-center">
                 <Loader2 className="h-5 w-5 animate-spin inline-block text-neutral-400" />
               </div>
-            ) : entries.length === 0 ? (
+            ) : filteredEntries.length === 0 ? (
               <div className="py-12 text-center text-sm text-neutral-500">
-                No {isIncome ? 'income' : 'expense'} entries yet.
+                {entries.length === 0
+                  ? `No ${isIncome ? 'income' : 'expense'} entries${filterDate ? ' for this date' : ''} yet.`
+                  : 'No entries match your search.'}
               </div>
             ) : (
               <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
-                {entries.map((e) => (
+                {filteredEntries.map((e) => (
                   <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 group">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
