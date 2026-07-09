@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Loader2, Tags, ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react'
+import { Plus, Trash2, Loader2, Tags, ArrowUpCircle, ArrowDownCircle, TrendingUp, Landmark } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TypeItem {
@@ -20,7 +20,7 @@ export default function ManageTypesView() {
   const [types, setTypes] = useState<TypeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
-  const [newKind, setNewKind] = useState<'INCOME' | 'EXPENSE' | 'INVEST'>('INCOME')
+  const [newKind, setNewKind] = useState<'INCOME' | 'EXPENSE' | 'INVEST' | 'DEPOSIT'>('INCOME')
   const [submitting, setSubmitting] = useState(false)
 
   const load = useCallback(async () => {
@@ -84,10 +84,11 @@ export default function ManageTypesView() {
   const incomeTypes = types.filter((t) => t.kind === 'INCOME')
   const expenseTypes = types.filter((t) => t.kind === 'EXPENSE')
   const investTypes = types.filter((t) => t.kind === 'INVEST')
+  const depositTypes = types.filter((t) => t.kind === 'DEPOSIT')
 
-  const renderList = (list: TypeItem[], kind: 'INCOME' | 'EXPENSE' | 'INVEST') => {
+  const renderList = (list: TypeItem[], kind: 'INCOME' | 'EXPENSE' | 'INVEST' | 'DEPOSIT') => {
     const isIncome = kind === 'INCOME'
-    const label = kind === 'INCOME' ? 'income' : kind === 'EXPENSE' ? 'expense' : 'investment'
+    const label = kind === 'INCOME' ? 'income' : kind === 'EXPENSE' ? 'expense' : kind === 'INVEST' ? 'investment' : 'deposit'
     if (list.length === 0) {
       return (
         <div className="py-10 text-center text-sm text-neutral-500">
@@ -104,6 +105,8 @@ export default function ManageTypesView() {
                 <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
               ) : kind === 'INVEST' ? (
                 <TrendingUp className="h-4 w-4 text-amber-600" />
+              ) : kind === 'DEPOSIT' ? (
+                <Landmark className="h-4 w-4 text-sky-600" />
               ) : (
                 <ArrowDownCircle className="h-4 w-4 text-rose-600" />
               )}
@@ -145,16 +148,19 @@ export default function ManageTypesView() {
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
                 <Label className="mb-2 block">Kind</Label>
-                <Tabs value={newKind} onValueChange={(v) => setNewKind(v as 'INCOME' | 'EXPENSE' | 'INVEST')}>
-                  <TabsList className="grid grid-cols-3 w-full">
+                <Tabs value={newKind} onValueChange={(v) => setNewKind(v as 'INCOME' | 'EXPENSE' | 'INVEST' | 'DEPOSIT')}>
+                  <TabsList className="grid grid-cols-4 w-full">
                     <TabsTrigger value="INCOME" className="data-[state=active]:text-emerald-600">
-                      <ArrowUpCircle className="h-4 w-4 mr-1" /> Income
+                      <ArrowUpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Income
                     </TabsTrigger>
                     <TabsTrigger value="EXPENSE" className="data-[state=active]:text-rose-600">
-                      <ArrowDownCircle className="h-4 w-4 mr-1" /> Expense
+                      <ArrowDownCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Expense
                     </TabsTrigger>
                     <TabsTrigger value="INVEST" className="data-[state=active]:text-amber-600">
-                      <TrendingUp className="h-4 w-4 mr-1" /> Invest
+                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Invest
+                    </TabsTrigger>
+                    <TabsTrigger value="DEPOSIT" className="data-[state=active]:text-sky-600">
+                      <Landmark className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Deposit
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -192,7 +198,7 @@ export default function ManageTypesView() {
               </div>
             ) : (
               <Tabs defaultValue="INCOME">
-                <TabsList className="grid grid-cols-3 w-full mb-4">
+                <TabsList className="grid grid-cols-4 w-full mb-4">
                   <TabsTrigger value="INCOME">
                     Income ({incomeTypes.length})
                   </TabsTrigger>
@@ -202,10 +208,14 @@ export default function ManageTypesView() {
                   <TabsTrigger value="INVEST">
                     Invest ({investTypes.length})
                   </TabsTrigger>
+                  <TabsTrigger value="DEPOSIT">
+                    Deposit ({depositTypes.length})
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="INCOME">{renderList(incomeTypes, 'INCOME')}</TabsContent>
                 <TabsContent value="EXPENSE">{renderList(expenseTypes, 'EXPENSE')}</TabsContent>
                 <TabsContent value="INVEST">{renderList(investTypes, 'INVEST')}</TabsContent>
+                <TabsContent value="DEPOSIT">{renderList(depositTypes, 'DEPOSIT')}</TabsContent>
               </Tabs>
             )}
           </CardContent>
