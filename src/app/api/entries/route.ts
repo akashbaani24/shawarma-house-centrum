@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       if (type && type.kind === kind) finalTypeId = typeId
     }
     let finalBankAccountId: string | null = null
-    if (bankAccountId && (method === 'BANK' || method === 'MOBILE_BANK')) {
+    if (bankAccountId && (method === 'BANK' || method === 'MOBILE_BANK' || method === 'CARD')) {
       const acct = await db.bankAccount.findUnique({ where: { id: bankAccountId } })
       if (acct) finalBankAccountId = bankAccountId
     }

@@ -227,12 +227,13 @@ export default function EntryView({
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
   useEffect(() => {
-    if (paymentMethod !== 'BANK' && paymentMethod !== 'MOBILE_BANK') {
+    if (paymentMethod !== 'BANK' && paymentMethod !== 'MOBILE_BANK' && paymentMethod !== 'CARD') {
       setBankAccountId('')
     }
   }, [paymentMethod])
 
-  const needsBankAccount = paymentMethod === 'BANK' || paymentMethod === 'MOBILE_BANK'
+  // Bank account selector shows for BANK, CARD, and MOBILE_BANK
+  const needsBankAccount = paymentMethod === 'BANK' || paymentMethod === 'MOBILE_BANK' || paymentMethod === 'CARD'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -577,7 +578,7 @@ export default function EntryView({
               </div>
 
               <div>
-                <Label className="mb-1.5 block">Payment Method</Label>
+                <Label className="mb-1.5 block">{isIncome ? 'Receive Method' : 'Payment Method'}</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger>
                     <SelectValue />
@@ -593,7 +594,7 @@ export default function EntryView({
               {needsBankAccount && (
                 <div>
                   <Label className="mb-1.5 block">
-                    {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : 'Bank Account'}
+                    {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : paymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
                   </Label>
                   {bankAccounts.filter((a) => a.isActive).length === 0 ? (
                     <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
