@@ -30,6 +30,7 @@ import ManageTypesView from '@/components/views/manage-types-view'
 import OpeningBalanceView from '@/components/views/opening-balance-view'
 import DailyReportView from '@/components/views/daily-report-view'
 import ExpenseDetailsView from '@/components/views/expense-details-view'
+import IncomeReportView from '@/components/views/income-report-view'
 import InvestmentReportView from '@/components/views/investment-report-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
@@ -50,6 +51,7 @@ export type ViewKey =
   | 'opening'
   | 'branch-report'
   | 'expense-details'
+  | 'income-report'
   | 'investment-report'
   | 'supplier-report'
   | 'profit-loss'
@@ -87,6 +89,7 @@ const SETUP_NAV: NavItem[] = [
 // Report sub-menu items (under "Reports" group)
 const REPORT_NAV: NavItem[] = [
   { key: 'branch-report', label: 'Branch Daily Report', icon: FileText },
+  { key: 'income-report', label: 'Income Report', icon: TrendingUp },
   { key: 'expense-details', label: 'Branch Expense Report', icon: Receipt },
   { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
   { key: 'supplier-report', label: 'Supplier Report', icon: Truck },
@@ -363,6 +366,7 @@ function AppShellInner({
             {view === 'bank-accounts' && <BankAccountsView />}
             {view === 'branch-report' && <DailyReportView />}
             {view === 'expense-details' && <ExpenseDetailsView />}
+            {view === 'income-report' && <IncomeReportView />}
             {view === 'investment-report' && <InvestmentReportView />}
             {view === 'supplier-report' && <SupplierReportView />}
             {view === 'profit-loss' && <ProfitLossView />}

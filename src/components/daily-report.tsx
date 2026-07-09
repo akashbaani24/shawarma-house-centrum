@@ -62,7 +62,7 @@ const SECTIONS: SectionDef[] = [
     label: 'Payments / Expenses',
     column: 'right',
     particulars: [
-      'Vendor Bill',
+      'Supplier Bill',
       'Out Purchase',
       'Conveyance',
       'Delivery Charge',

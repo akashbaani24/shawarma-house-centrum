@@ -22,7 +22,7 @@ const DEFAULT_TYPES = [
   { name: 'Sales - Card', kind: 'INCOME' },
   { name: 'Received from Partner', kind: 'INCOME' },
   { name: 'Miscellaneous Income', kind: 'INCOME' },
-  { name: 'Vendor Bill', kind: 'EXPENSE' },
+  { name: 'Supplier Bill', kind: 'EXPENSE' },
   { name: 'Out Purchase', kind: 'EXPENSE' },
   { name: 'Conveyance', kind: 'EXPENSE' },
   { name: 'Delivery Charge', kind: 'EXPENSE' },

@@ -169,7 +169,7 @@ export default function ManageTypesView() {
                 <Label htmlFor="type-name" className="mb-1.5 block">Type Name</Label>
                 <Input
                   id="type-name"
-                  placeholder="e.g. Vendor Bill"
+                  placeholder="e.g. Supplier Bill"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   required
