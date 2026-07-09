@@ -50,6 +50,43 @@ function fmt(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Group entries by date — sum Cash / Card / Bkash columns per date.
+// One row per date is shown in the report (instead of one row per transaction).
+interface DateGroup {
+  date: string
+  cash: number
+  card: number
+  bkash: number
+  total: number
+  count: number
+  note: string  // combined notes / categories
+}
+
+function groupByDate(entries: EntryItem[]): DateGroup[] {
+  const map = new Map<string, EntryItem[]>()
+  for (const e of entries) {
+    if (!map.has(e.date)) map.set(e.date, [])
+    map.get(e.date)!.push(e)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, list]) => {
+      const cash = list.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0)
+      const card = list.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0)
+      const bkash = list.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0)
+      const total = list.reduce((s, e) => s + e.amount, 0)
+      // Combine unique non-empty notes; if none, show "(N transactions)" or "—"
+      const uniqueNotes = Array.from(new Set(list.map((e) => e.note).filter((n): n is string => !!n)))
+      let note: string
+      if (uniqueNotes.length > 0) {
+        note = (list.length > 1 ? `(${list.length}) ` : '') + uniqueNotes.join('; ')
+      } else {
+        note = list.length > 1 ? `${list.length} transactions` : '—'
+      }
+      return { date, cash, card, bkash, total, count: list.length, note }
+    })
+}
+
 const CURRENCY = '৳'
 
 const METHOD_LABELS: Record<string, string> = {
@@ -107,9 +144,16 @@ export default function IncomeReportView() {
       String(e.amount).includes(q) ||
       e.date.includes(q)
   })
-  const filteredCount = filteredEntries.length
+  // Group entries by date — one row per date with summed Cash/Card/Bkash
+  const groupedEntries = groupByDate(filteredEntries)
+  const filteredCount = groupedEntries.length
   const pagination = usePagination(filteredCount)
-  const paginatedEntries = filteredEntries.slice(pagination.startIndex, pagination.endIndex)
+  const paginatedGroups = groupedEntries.slice(pagination.startIndex, pagination.endIndex)
+  // Subtotals across all filtered entries
+  const sumCash = filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0)
+  const sumCard = filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0)
+  const sumBkash = filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0)
+  const sumTotal = filteredEntries.reduce((s, e) => s + e.amount, 0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -156,21 +200,16 @@ export default function IncomeReportView() {
   const fromDateDisplay = from.split('-').reverse().join('/')
   const toDateDisplay = to.split('-').reverse().join('/')
 
+  // Excel/PDF rows — grouped by date (one row per date)
   const excelRows = report
-    ? report.entries.map((e) => {
-        const cash = e.paymentMethod === 'CASH' ? e.amount : 0
-        const card = e.paymentMethod === 'CARD' ? e.amount : 0
-        // Bkash column covers MOBILE_BANK and BANK (digital/bank transfers)
-        const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
-        return [
-          e.date,
-          cash ? fmt(cash) : '',
-          card ? fmt(card) : '',
-          bkash ? fmt(bkash) : '',
-          e.note || '',
-          fmt(e.amount),
-        ]
-      })
+    ? groupByDate(report.entries).map((g) => [
+        g.date,
+        g.cash ? fmt(g.cash) : '',
+        g.card ? fmt(g.card) : '',
+        g.bkash ? fmt(g.bkash) : '',
+        g.note,
+        fmt(g.total),
+      ])
     : []
   const exportColumns = [
     { header: 'Date', key: 'date' },
@@ -379,49 +418,38 @@ export default function IncomeReportView() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {report.entries.length === 0 ? (
+                      {groupedEntries.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
                             No income entries in this period
                           </TableCell>
                         </TableRow>
                       ) : (
-                        paginatedEntries.map((e) => {
-                          const cash = e.paymentMethod === 'CASH' ? e.amount : 0
-                          const card = e.paymentMethod === 'CARD' ? e.amount : 0
-                          const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
-                          return (
-                            <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50">
-                              <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
-                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{cash ? fmt(cash) : '—'}</TableCell>
-                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{card ? fmt(card) : '—'}</TableCell>
-                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{bkash ? fmt(bkash) : '—'}</TableCell>
-                              <TableCell className="py-1 px-2 text-neutral-500 max-w-[260px] truncate">{e.note || '—'}</TableCell>
-                              <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
-                                {fmt(e.amount)}
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })
+                        paginatedGroups.map((g) => (
+                          <TableRow key={g.date} className="border-neutral-100 dark:border-neutral-800/50">
+                            <TableCell className="py-1 px-2 whitespace-nowrap">{g.date.split('-').reverse().join('/')}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{g.cash ? fmt(g.cash) : '—'}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{g.card ? fmt(g.card) : '—'}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{g.bkash ? fmt(g.bkash) : '—'}</TableCell>
+                            <TableCell className="py-1 px-2 text-neutral-500 max-w-[260px] truncate">{g.note}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
+                              {fmt(g.total)}
+                            </TableCell>
+                          </TableRow>
+                        ))
                       )}
                       {/* Subtotal row: sum of each payment-method column */}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-300 dark:border-neutral-700">
                         <TableCell className="py-1.5 px-2 text-[12px] font-bold text-right">Subtotal -</TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
-                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}
-                        </TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
-                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0))}
-                        </TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
-                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0))}
-                        </TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(sumCash)}</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(sumCard)}</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(sumBkash)}</TableCell>
                         <TableCell></TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(sumTotal)}</TableCell>
                       </TableRow>
                       <TableRow className="bg-emerald-50 dark:bg-emerald-950/40 border-t-2 border-neutral-800 dark:border-neutral-200">
                         <TableCell colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
-                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(sumTotal)}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -430,7 +458,7 @@ export default function IncomeReportView() {
                   <PaginationControls totalItems={filteredCount} pagination={pagination} />
                 </div>
 
-                {/* Print-only: full unpaginated table with all filtered entries */}
+                {/* Print-only: full unpaginated table — one row per date */}
                 <div className="hidden print:block border border-black rounded-sm overflow-hidden">
                   <table className="text-[12px] w-full" style={{ tableLayout: 'fixed' }}>
                     <thead>
@@ -444,39 +472,34 @@ export default function IncomeReportView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredEntries.length === 0 ? (
+                      {groupedEntries.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-3 px-2 text-center text-black text-[12px]">No income entries in this period</td>
                         </tr>
                       ) : (
-                        filteredEntries.map((e) => {
-                          const cash = e.paymentMethod === 'CASH' ? e.amount : 0
-                          const card = e.paymentMethod === 'CARD' ? e.amount : 0
-                          const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
-                          return (
-                            <tr key={e.id} className="border-b border-black print:break-inside-avoid">
-                              <td className="py-1 px-2 whitespace-nowrap text-black">{e.date.split('-').reverse().join('/')}</td>
-                              <td className="py-1 px-2 text-right tabular-nums text-black">{cash ? fmt(cash) : ''}</td>
-                              <td className="py-1 px-2 text-right tabular-nums text-black">{card ? fmt(card) : ''}</td>
-                              <td className="py-1 px-2 text-right tabular-nums text-black">{bkash ? fmt(bkash) : ''}</td>
-                              <td className="py-1 px-2 text-black">{e.note || '—'}</td>
-                              <td className="py-1 px-2 text-right tabular-nums text-black">{fmt(e.amount)}</td>
-                            </tr>
-                          )
-                        })
+                        groupedEntries.map((g) => (
+                          <tr key={g.date} className="border-b border-black print:break-inside-avoid">
+                            <td className="py-1 px-2 whitespace-nowrap text-black">{g.date.split('-').reverse().join('/')}</td>
+                            <td className="py-1 px-2 text-right tabular-nums text-black">{g.cash ? fmt(g.cash) : ''}</td>
+                            <td className="py-1 px-2 text-right tabular-nums text-black">{g.card ? fmt(g.card) : ''}</td>
+                            <td className="py-1 px-2 text-right tabular-nums text-black">{g.bkash ? fmt(g.bkash) : ''}</td>
+                            <td className="py-1 px-2 text-black">{g.note}</td>
+                            <td className="py-1 px-2 text-right tabular-nums text-black">{fmt(g.total)}</td>
+                          </tr>
+                        ))
                       )}
                       {/* Subtotal row */}
                       <tr className="bg-gray-100 border-t border-black">
                         <td className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Subtotal -</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0))}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0))}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(sumCash)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(sumCard)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(sumBkash)}</td>
                         <td></td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(sumTotal)}</td>
                       </tr>
                       <tr className="bg-gray-200 border-t-2 border-black">
                         <td colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Grand Total -</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(sumTotal)}</td>
                       </tr>
                     </tbody>
                   </table>
