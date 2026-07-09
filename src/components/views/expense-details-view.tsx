@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { usePagination, PaginationControls } from '@/components/pagination'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -155,7 +156,7 @@ export default function ExpenseDetailsView() {
           <div className="flex items-center gap-2">
             <Receipt className="h-4 w-4 text-neutral-400" />
             <div>
-              <div className="text-base font-semibold">Expense Details</div>
+              <div className="text-base font-semibold">Branch Expense Report</div>
               <div className="text-xs text-neutral-500">
                 {formatLongDate(from)} — {formatLongDate(to)}
               </div>
@@ -281,118 +282,161 @@ export default function ExpenseDetailsView() {
                 <div className="text-xl sm:text-2xl font-bold tracking-tight">{report.businessName}</div>
               </div>
               <div className="text-xs sm:text-sm">
-                <div className="text-neutral-500">Expense Details</div>
+                <div className="text-neutral-500">Branch Expense Report</div>
                 <div className="font-semibold tabular-nums">{fromDateDisplay} — {toDateDisplay}</div>
               </div>
             </div>
 
-            {/* Two-column: category summary + payment method summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3 mb-4">
-              {/* Category summary */}
-              <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
-                <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                  <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                    Summary by Category
-                  </span>
-                </div>
-                <Table className="text-[12px]">
-                  <TableHeader>
-                    <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                      <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
-                      <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.byCategory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[12px]">
-                          No expense entries in this period
-                        </TableCell>
+            {/* Tabs: Summary by Category | All Expense Entries */}
+            <Tabs defaultValue="summary" className="print:hidden">
+              <TabsList className="grid grid-cols-2 w-full mb-3">
+                <TabsTrigger value="summary">Summary by Category</TabsTrigger>
+                <TabsTrigger value="entries">All Expense Entries</TabsTrigger>
+              </TabsList>
+
+              {/* Tab 1: Summary by Category */}
+              <TabsContent value="summary">
+                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
+                  <Table className="text-[12px]">
+                    <TableHeader>
+                      <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                       </TableRow>
-                    ) : (
-                      report.byCategory.map((c) => (
-                        <TableRow key={c.category} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                          <TableCell className="py-1 px-2">{c.category}</TableCell>
-                          <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(c.amount)}</TableCell>
+                    </TableHeader>
+                    <TableBody>
+                      {report.byCategory.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400 text-[12px]">
+                            No expense entries in this period
+                          </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                    <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                      <TableCell className="py-1 px-2 text-[12px] font-bold text-right">Total -</TableCell>
-                      <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            {/* Detailed entries table */}
-            <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
-              <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                  All Expense Entries
-                </span>
-              </div>
-              <Table className="text-[12px]">
-                <TableHeader>
-                  <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Source</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Method</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
-                    <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.entries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
-                        No expense entries in this period
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedEntries.map((e) => (
-                      <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                        <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
-                        <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
-                        <TableCell className="py-1 px-2">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                            e.source === 'OFFICE'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
-                          }`}>
-                            {e.source === 'OFFICE' ? 'Office' : 'Branch'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-1 px-2">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                            e.paymentMethod === 'CASH'
-                              ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-                              : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400'
-                          }`}>
-                            {METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}
-                            {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-rose-700 dark:text-rose-400">
-                          {fmt(e.amount)}
-                        </TableCell>
+                      ) : (
+                        report.byCategory.map((c) => (
+                          <TableRow key={c.category} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2">{c.category}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(c.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
+                        <TableCell className="py-1 px-2 text-[12px] font-bold text-right">Total -</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                  <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
-                    <TableCell colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
-                    <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
 
-            {/* Pagination */}
-            <div className="print:hidden">
-              <PaginationControls totalItems={filteredCount} pagination={pagination} />
+              {/* Tab 2: All Expense Entries */}
+              <TabsContent value="entries">
+                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
+                  <Table className="text-[12px]">
+                    <TableHeader>
+                      <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Source</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Method</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.entries.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
+                            No expense entries in this period
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedEntries.map((e) => (
+                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
+                            <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
+                            <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
+                            <TableCell className="py-1 px-2">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                e.source === 'OFFICE'
+                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
+                                  : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                              }`}>
+                                {e.source === 'OFFICE' ? 'Office' : 'Branch'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-1 px-2">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                e.paymentMethod === 'CASH'
+                                  ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
+                                  : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400'
+                              }`}>
+                                {METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}
+                                {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
+                            <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-rose-700 dark:text-rose-400">
+                              {fmt(e.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
+                        <TableCell colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="print:hidden mt-2">
+                  <PaginationControls totalItems={filteredCount} pagination={pagination} />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Print version: show both tables stacked */}
+            <div className="hidden print:block">
+              <div className="border border-black rounded-sm overflow-hidden mb-3">
+                <div className="bg-gray-200 px-2 py-1 border-b border-black">
+                  <span className="text-[12px] font-bold uppercase tracking-wide text-black">Summary by Category</span>
+                </div>
+                <table className="text-[12px] w-full">
+                  <tbody>
+                    {report.byCategory.map((c) => (
+                      <tr key={c.category} className="border-b border-black">
+                        <td className="py-1 px-2">{c.category}</td>
+                        <td className="py-1 px-2 text-right tabular-nums">{fmt(c.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 border-t-2 border-black">
+                      <td className="py-1 px-2 font-bold text-right">Total -</td>
+                      <td className="py-1 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="border border-black rounded-sm overflow-hidden">
+                <div className="bg-gray-200 px-2 py-1 border-b border-black">
+                  <span className="text-[12px] font-bold uppercase tracking-wide text-black">All Expense Entries</span>
+                </div>
+                <table className="text-[12px] w-full">
+                  <tbody>
+                    {filteredEntries.map((e) => (
+                      <tr key={e.id} className="border-b border-black">
+                        <td className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</td>
+                        <td className="py-1 px-2 font-medium">{e.category}</td>
+                        <td className="py-1 px-2">{e.source === 'OFFICE' ? 'Office' : 'Branch'}</td>
+                        <td className="py-1 px-2">{METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}</td>
+                        <td className="py-1 px-2 text-neutral-500">{e.note || '—'}</td>
+                        <td className="py-1 px-2 text-right tabular-nums">{fmt(e.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 border-t-2 border-black">
+                      <td colSpan={5} className="py-1.5 px-2 font-bold text-right">Grand Total -</td>
+                      <td className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Footer */}

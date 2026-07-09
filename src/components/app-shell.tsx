@@ -87,7 +87,7 @@ const SETUP_NAV: NavItem[] = [
 // Report sub-menu items (under "Reports" group)
 const REPORT_NAV: NavItem[] = [
   { key: 'branch-report', label: 'Branch Daily Report', icon: FileText },
-  { key: 'expense-details', label: 'Expense Details', icon: Receipt },
+  { key: 'expense-details', label: 'Branch Expense Report', icon: Receipt },
   { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
   { key: 'supplier-report', label: 'Supplier Report', icon: Truck },
   { key: 'profit-loss', label: 'Profit & Loss', icon: Scale },
