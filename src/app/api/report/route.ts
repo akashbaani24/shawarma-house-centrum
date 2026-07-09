@@ -119,9 +119,11 @@ export async function GET(req: NextRequest) {
     }
     const cashInHand = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
 
+    // Left side = Opening + Pure Income + Excess
+    // Right side = Expenses + Payments + Deposits + Shortage + Cash in Hand
     const calculatedClosing = openingBalance + totalIncome - totalExpense
-    const leftTotal = openingBalance + totalIncome
-    const rightTotal = totalExpense + cashInHand
+    const leftTotal = openingBalance + totalPureIncome + totalExcess
+    const rightTotal = totalExpenses + totalPayments + totalDeposits + totalShortage + cashInHand
     const difference = leftTotal - rightTotal
     const cashShortage = difference > 0 ? difference : 0
     const excessCash = difference < 0 ? -difference : 0

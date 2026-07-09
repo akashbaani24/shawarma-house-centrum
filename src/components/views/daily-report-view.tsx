@@ -177,8 +177,8 @@ export default function DailyReportView() {
   }, [report, denomCounts])
 
   // Live balance check (using unsaved denomination)
-  const liveLeftTotal = report ? report.openingBalance + report.totalIncome : 0
-  const liveRightTotal = report ? report.totalExpense + liveDenomTotal : 0
+  const liveLeftTotal = report ? report.openingBalance + report.totalIncome + (report.totalExcess ?? 0) : 0
+  const liveRightTotal = report ? report.totalExpenses + report.totalPayments + report.totalDeposits + (report.totalShortage ?? 0) + liveDenomTotal : 0
   const liveDifference = liveLeftTotal - liveRightTotal
   const liveIsBalanced = Math.abs(liveDifference) < 0.005
 
@@ -647,10 +647,10 @@ export default function DailyReportView() {
                       <TableCell className="py-1 px-2 font-medium">+ Total Income</TableCell>
                       <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalIncome)}</TableCell>
                     </TableRow>
-                    {report.excessCash > 0 && (
+                    {(report.totalExcess ?? 0) > 0 && (
                       <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
-                        <TableCell className="py-1 px-2 font-medium">+ Excess Cash</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.excessCash)}</TableCell>
+                        <TableCell className="py-1 px-2 font-medium">+ Total Excess</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalExcess ?? 0)}</TableCell>
                       </TableRow>
                     )}
                     <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
@@ -679,16 +679,16 @@ export default function DailyReportView() {
                       <TableCell className="py-1 px-2 font-medium">+ Total Deposits</TableCell>
                       <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalDeposits)}</TableCell>
                     </TableRow>
+                    {(report.totalShortage ?? 0) > 0 && (
+                      <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
+                        <TableCell className="py-1 px-2 font-medium">+ Total Shortage</TableCell>
+                        <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(report.totalShortage ?? 0)}</TableCell>
+                      </TableRow>
+                    )}
                     <TableRow className="border-neutral-200 dark:border-neutral-800 print:border-black">
                       <TableCell className="py-1 px-2 font-medium">+ Cash in Hand</TableCell>
                       <TableCell className="py-1 px-2 text-right tabular-nums">{fmt(liveDenomTotal)}</TableCell>
                     </TableRow>
-                    {report.cashShortage > 0 && (
-                      <TableRow className="border-amber-300 dark:border-amber-800 print:border-black bg-amber-50 dark:bg-amber-950/20">
-                        <TableCell className="py-1 px-2 font-medium text-amber-700 dark:text-amber-400">+ Cash Shortage</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums text-amber-700 dark:text-amber-400">{fmt(report.cashShortage)}</TableCell>
-                      </TableRow>
-                    )}
                     <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
                       <TableCell className="py-1.5 px-2 font-bold">Expense Side Total -</TableCell>
                       <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
