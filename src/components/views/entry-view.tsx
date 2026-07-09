@@ -214,9 +214,14 @@ export default function EntryView({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const amt = parseFloat(amount)
-    if (!amount || isNaN(amt) || amt <= 0) {
-      toast.error('Please enter a valid amount')
+
+    // For supplier bills, use billAmount as the entry amount (the regular
+    // "Amount" field is hidden). For everything else, use the amount field.
+    const isSupplierBill = kind === 'EXPENSE' && isSupplierCategory && supplierId
+    const amtStr = isSupplierBill ? billAmount : amount
+    const amt = parseFloat(amtStr)
+    if (!amtStr || isNaN(amt) || amt <= 0) {
+      toast.error(isSupplierBill ? 'Please enter a valid bill amount' : 'Please enter a valid amount')
       return
     }
 
@@ -481,19 +486,23 @@ export default function EntryView({
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="amount" className="mb-1.5 block">Amount ({CURRENCY})</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                />
-              </div>
+              {/* Regular Amount field — hidden when Supplier Bill is selected
+                  (Bill Amount is used instead in that case) */}
+              {!(kind === 'EXPENSE' && isSupplierCategory && supplierId) && (
+                <div>
+                  <Label htmlFor="amount" className="mb-1.5 block">Amount ({CURRENCY})</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="date" className="mb-1.5 block">Date</Label>
