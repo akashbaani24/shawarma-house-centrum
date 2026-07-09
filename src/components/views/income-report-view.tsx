@@ -164,7 +164,6 @@ export default function IncomeReportView() {
         const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
         return [
           e.date,
-          e.category,
           cash ? fmt(cash) : '',
           card ? fmt(card) : '',
           bkash ? fmt(bkash) : '',
@@ -175,7 +174,6 @@ export default function IncomeReportView() {
     : []
   const exportColumns = [
     { header: 'Date', key: 'date' },
-    { header: 'Category', key: 'category' },
     { header: 'Cash', key: 'cash' },
     { header: 'Card', key: 'card' },
     { header: 'Bkash', key: 'bkash' },
@@ -231,7 +229,7 @@ export default function IncomeReportView() {
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: exportColumns,
                     rows: excelRows,
-                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
+                    totalsRow: ['Total', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
@@ -243,7 +241,7 @@ export default function IncomeReportView() {
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: exportColumns,
                     rows: excelRows,
-                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
+                    totalsRow: ['Total', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileText className="h-4 w-4 mr-1" /> PDF
@@ -373,18 +371,17 @@ export default function IncomeReportView() {
                     <TableHeader>
                       <TableRow className="border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
                         <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Cash</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Card</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Bkash</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Cash</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Card</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Bkash</TableHead>
                         <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Amount</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {report.entries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
+                          <TableCell colSpan={6} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
                             No income entries in this period
                           </TableCell>
                         </TableRow>
@@ -396,11 +393,10 @@ export default function IncomeReportView() {
                           return (
                             <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50">
                               <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
-                              <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
                               <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{cash ? fmt(cash) : '—'}</TableCell>
                               <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{card ? fmt(card) : '—'}</TableCell>
                               <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{bkash ? fmt(bkash) : '—'}</TableCell>
-                              <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
+                              <TableCell className="py-1 px-2 text-neutral-500 max-w-[260px] truncate">{e.note || '—'}</TableCell>
                               <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
                                 {fmt(e.amount)}
                               </TableCell>
@@ -410,7 +406,7 @@ export default function IncomeReportView() {
                       )}
                       {/* Subtotal row: sum of each payment-method column */}
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-300 dark:border-neutral-700">
-                        <TableCell colSpan={2} className="py-1.5 px-2 text-[12px] font-bold text-right">Subtotal -</TableCell>
+                        <TableCell className="py-1.5 px-2 text-[12px] font-bold text-right">Subtotal -</TableCell>
                         <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
                           {fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}
                         </TableCell>
@@ -424,7 +420,7 @@ export default function IncomeReportView() {
                         <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                       </TableRow>
                       <TableRow className="bg-emerald-50 dark:bg-emerald-950/40 border-t-2 border-neutral-800 dark:border-neutral-200">
-                        <TableCell colSpan={6} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
+                        <TableCell colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
                         <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -439,19 +435,18 @@ export default function IncomeReportView() {
                   <table className="text-[12px] w-full" style={{ tableLayout: 'fixed' }}>
                     <thead>
                       <tr className="bg-gray-200 border-b border-black">
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '11%' }}>Date</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '22%' }}>Category</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Cash</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Card</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Bkash</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '23%' }}>Note</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Amount</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '13%' }}>Date</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '13%' }}>Cash</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '13%' }}>Card</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '13%' }}>Bkash</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '35%' }}>Note</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '13%' }}>Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredEntries.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-3 px-2 text-center text-black text-[12px]">No income entries in this period</td>
+                          <td colSpan={6} className="py-3 px-2 text-center text-black text-[12px]">No income entries in this period</td>
                         </tr>
                       ) : (
                         filteredEntries.map((e) => {
@@ -461,7 +456,6 @@ export default function IncomeReportView() {
                           return (
                             <tr key={e.id} className="border-b border-black print:break-inside-avoid">
                               <td className="py-1 px-2 whitespace-nowrap text-black">{e.date.split('-').reverse().join('/')}</td>
-                              <td className="py-1 px-2 font-medium text-black">{e.category}</td>
                               <td className="py-1 px-2 text-right tabular-nums text-black">{cash ? fmt(cash) : ''}</td>
                               <td className="py-1 px-2 text-right tabular-nums text-black">{card ? fmt(card) : ''}</td>
                               <td className="py-1 px-2 text-right tabular-nums text-black">{bkash ? fmt(bkash) : ''}</td>
@@ -473,7 +467,7 @@ export default function IncomeReportView() {
                       )}
                       {/* Subtotal row */}
                       <tr className="bg-gray-100 border-t border-black">
-                        <td colSpan={2} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Subtotal -</td>
+                        <td className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Subtotal -</td>
                         <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}</td>
                         <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0))}</td>
                         <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0))}</td>
@@ -481,7 +475,7 @@ export default function IncomeReportView() {
                         <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
                       </tr>
                       <tr className="bg-gray-200 border-t-2 border-black">
-                        <td colSpan={6} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Grand Total -</td>
+                        <td colSpan={5} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Grand Total -</td>
                         <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
                       </tr>
                     </tbody>
