@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     // Fetch entries, denominations, business profile — all in parallel
     const [entriesRes, denomRes, logoRes] = await Promise.all([
       libsql.execute({
-        sql: 'SELECT id, kind, category, amount, note, paymentMethod, source, "createdById" FROM "Entry" WHERE date = ? AND source = ? AND kind IN (?, ?)',
+        sql: 'SELECT id, kind, category, amount, note, paymentMethod, source, "createdById" FROM "Entry" WHERE date = ? AND source = ? AND kind IN (?, ?) ORDER BY "createdAt" ASC',
         args: [date, 'BRANCH', 'INCOME', 'EXPENSE'],
       }),
       libsql.execute({ sql: 'SELECT denomination, count FROM "Denomination" WHERE date = ?', args: [date] }),
