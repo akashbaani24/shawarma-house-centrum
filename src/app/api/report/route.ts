@@ -117,11 +117,20 @@ export async function GET(req: NextRequest) {
     for (const r of denomRows) {
       if (VALID_DENOMS.includes(r.denomination)) denomMap[r.denomination] = r.count
     }
-    const cashInHand = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
+    const denomCounted = denomRows.length > 0
+    const denomTotal = VALID_DENOMS.reduce((s, d) => s + d * denomMap[d], 0)
+
+    // Calculated closing = Opening + Income - Expense (what SHOULD be in the cash box)
+    const calculatedClosing = openingBalance + totalIncome - totalExpense
+
+    // Cash in Hand: if denomination has been entered manually, use that.
+    // If NOT entered, use the calculated closing (the money that should be there).
+    // This prevents false "Cash Shortage" when denomination hasn't been counted yet.
+    const cashInHand = denomCounted ? denomTotal : calculatedClosing
+    const denomNotEntered = !denomCounted
 
     // Left side = Opening + Pure Income + Excess
     // Right side = Expenses + Payments + Deposits + Shortage + Cash in Hand
-    const calculatedClosing = openingBalance + totalIncome - totalExpense
     const leftTotal = openingBalance + totalPureIncome + totalExcess
     const rightTotal = totalExpenses + totalPayments + totalDeposits + totalShortage + cashInHand
     const difference = leftTotal - rightTotal
@@ -154,6 +163,7 @@ export async function GET(req: NextRequest) {
       totalExcess,
       cashShortage,
       excessCash,
+      denomNotEntered,
       denominations: denomMap,
       validDenoms: VALID_DENOMS,
       cashInHand,

@@ -84,6 +84,7 @@ interface ReportData {
   denominations: Record<number, number>
   validDenoms: number[]
   cashInHand: number
+  denomNotEntered?: boolean
   calculatedClosing: number
   leftTotal: number
   rightTotal: number
@@ -463,6 +464,11 @@ export default function DailyReportView() {
                     <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
                       Denomination of Closing Cash
                     </span>
+                    {report.denomNotEntered && (
+                      <span className="text-[9px] text-amber-600 dark:text-amber-400 print:text-black">
+                        ⚠ Not counted — using calculated closing
+                      </span>
+                    )}
                   </div>
                   <Table className="text-[11px]">
                     <TableHeader>
