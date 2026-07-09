@@ -157,12 +157,28 @@ export default function IncomeReportView() {
   const toDateDisplay = to.split('-').reverse().join('/')
 
   const excelRows = report
-    ? report.entries.map((e) => [e.date, e.category, e.paymentMethod, e.note || '', fmt(e.amount)])
+    ? report.entries.map((e) => {
+        const cash = e.paymentMethod === 'CASH' ? e.amount : 0
+        const card = e.paymentMethod === 'CARD' ? e.amount : 0
+        // Bkash column covers MOBILE_BANK and BANK (digital/bank transfers)
+        const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
+        return [
+          e.date,
+          e.category,
+          cash ? fmt(cash) : '',
+          card ? fmt(card) : '',
+          bkash ? fmt(bkash) : '',
+          e.note || '',
+          fmt(e.amount),
+        ]
+      })
     : []
   const exportColumns = [
     { header: 'Date', key: 'date' },
     { header: 'Category', key: 'category' },
-    { header: 'Method', key: 'method' },
+    { header: 'Cash', key: 'cash' },
+    { header: 'Card', key: 'card' },
+    { header: 'Bkash', key: 'bkash' },
     { header: 'Note', key: 'note' },
     { header: 'Amount', key: 'amount' },
   ]
@@ -215,7 +231,7 @@ export default function IncomeReportView() {
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: exportColumns,
                     rows: excelRows,
-                    totalsRow: ['Total', '', '', '', fmt(report.total)],
+                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
@@ -227,7 +243,7 @@ export default function IncomeReportView() {
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: exportColumns,
                     rows: excelRows,
-                    totalsRow: ['Total', '', '', '', fmt(report.total)],
+                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileText className="h-4 w-4 mr-1" /> PDF
@@ -355,45 +371,60 @@ export default function IncomeReportView() {
                 <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:hidden">
                   <Table className="text-[12px]">
                     <TableHeader>
-                      <TableRow className="border-neutral-200 dark:border-neutral-800">
+                      <TableRow className="border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
                         <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Date</TableHead>
                         <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Category</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Method</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Cash</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Card</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-20">Bkash</TableHead>
                         <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold">Note</TableHead>
-                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-28">Amount</TableHead>
+                        <TableHead className="h-6 py-1 px-2 text-[11px] font-semibold text-right w-24">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {report.entries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
+                          <TableCell colSpan={7} className="py-6 px-2 text-center text-neutral-400 text-[12px]">
                             No income entries in this period
                           </TableCell>
                         </TableRow>
                       ) : (
-                        paginatedEntries.map((e) => (
-                          <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50">
-                            <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
-                            <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
-                            <TableCell className="py-1 px-2">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                e.paymentMethod === 'CASH'
-                                  ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-                                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                              }`}>
-                                {METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}
-                                {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
-                              </span>
-                            </TableCell>
-                            <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
-                            <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
-                              {fmt(e.amount)}
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        paginatedEntries.map((e) => {
+                          const cash = e.paymentMethod === 'CASH' ? e.amount : 0
+                          const card = e.paymentMethod === 'CARD' ? e.amount : 0
+                          const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
+                          return (
+                            <TableRow key={e.id} className="border-neutral-100 dark:border-neutral-800/50">
+                              <TableCell className="py-1 px-2 whitespace-nowrap">{e.date.split('-').reverse().join('/')}</TableCell>
+                              <TableCell className="py-1 px-2 font-medium">{e.category}</TableCell>
+                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{cash ? fmt(cash) : '—'}</TableCell>
+                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{card ? fmt(card) : '—'}</TableCell>
+                              <TableCell className="py-1 px-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">{bkash ? fmt(bkash) : '—'}</TableCell>
+                              <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
+                              <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
+                                {fmt(e.amount)}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
                       )}
+                      {/* Subtotal row: sum of each payment-method column */}
+                      <TableRow className="bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-300 dark:border-neutral-700">
+                        <TableCell colSpan={2} className="py-1.5 px-2 text-[12px] font-bold text-right">Subtotal -</TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
+                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}
+                        </TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
+                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0))}
+                        </TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">
+                          {fmt(filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0))}
+                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
+                      </TableRow>
                       <TableRow className="bg-emerald-50 dark:bg-emerald-950/40 border-t-2 border-neutral-800 dark:border-neutral-200">
-                        <TableCell colSpan={4} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
+                        <TableCell colSpan={6} className="py-1.5 px-2 text-[12px] font-bold text-right">Grand Total -</TableCell>
                         <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -408,32 +439,50 @@ export default function IncomeReportView() {
                   <table className="text-[12px] w-full" style={{ tableLayout: 'fixed' }}>
                     <thead>
                       <tr className="bg-gray-200 border-b border-black">
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '14%' }}>Date</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '26%' }}>Category</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '18%' }}>Method</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '27%' }}>Note</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '15%' }}>Amount</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '11%' }}>Date</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '22%' }}>Category</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Cash</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Card</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Bkash</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '23%' }}>Note</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '11%' }}>Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredEntries.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-3 px-2 text-center text-black text-[12px]">No income entries in this period</td>
+                          <td colSpan={7} className="py-3 px-2 text-center text-black text-[12px]">No income entries in this period</td>
                         </tr>
                       ) : (
-                        filteredEntries.map((e) => (
-                          <tr key={e.id} className="border-b border-black print:break-inside-avoid">
-                            <td className="py-1 px-2 whitespace-nowrap text-black">{e.date.split('-').reverse().join('/')}</td>
-                            <td className="py-1 px-2 font-medium text-black">{e.category}</td>
-                            <td className="py-1 px-2 text-black">{METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}{e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}</td>
-                            <td className="py-1 px-2 text-black">{e.note || '—'}</td>
-                            <td className="py-1 px-2 text-right tabular-nums text-black">{fmt(e.amount)}</td>
-                          </tr>
-                        ))
+                        filteredEntries.map((e) => {
+                          const cash = e.paymentMethod === 'CASH' ? e.amount : 0
+                          const card = e.paymentMethod === 'CARD' ? e.amount : 0
+                          const bkash = (e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK') ? e.amount : 0
+                          return (
+                            <tr key={e.id} className="border-b border-black print:break-inside-avoid">
+                              <td className="py-1 px-2 whitespace-nowrap text-black">{e.date.split('-').reverse().join('/')}</td>
+                              <td className="py-1 px-2 font-medium text-black">{e.category}</td>
+                              <td className="py-1 px-2 text-right tabular-nums text-black">{cash ? fmt(cash) : ''}</td>
+                              <td className="py-1 px-2 text-right tabular-nums text-black">{card ? fmt(card) : ''}</td>
+                              <td className="py-1 px-2 text-right tabular-nums text-black">{bkash ? fmt(bkash) : ''}</td>
+                              <td className="py-1 px-2 text-black">{e.note || '—'}</td>
+                              <td className="py-1 px-2 text-right tabular-nums text-black">{fmt(e.amount)}</td>
+                            </tr>
+                          )
+                        })
                       )}
+                      {/* Subtotal row */}
+                      <tr className="bg-gray-100 border-t border-black">
+                        <td colSpan={2} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Subtotal -</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0))}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0))}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0))}</td>
+                        <td></td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
+                      </tr>
                       <tr className="bg-gray-200 border-t-2 border-black">
-                        <td colSpan={4} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Grand Total -</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(report.total)}</td>
+                        <td colSpan={6} className="py-1.5 px-2 text-[12px] font-bold text-right text-black">Grand Total -</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-bold text-black">{fmt(filteredEntries.reduce((s, e) => s + e.amount, 0))}</td>
                       </tr>
                     </tbody>
                   </table>
