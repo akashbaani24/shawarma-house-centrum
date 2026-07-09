@@ -5,55 +5,46 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { TrendingUp, Printer, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, ArrowUpCircle, ArrowDownCircle, DollarSign } from 'lucide-react'
+import { TrendingUp, Printer, Loader2, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, DollarSign, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 function todayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
-
 function firstOfMonth(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
-
 function formatLongDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
-
 function fmt(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
 const CURRENCY = '৳'
 
-interface CategoryItem {
-  category: string
-  amount: number
-}
+interface CategoryItem { category: string; amount: number }
+interface OpGroup { key: string; label: string; items: CategoryItem[]; total: number }
 
 interface ReportData {
   from: string
   to: string
   businessName: string
   logoUrl: string | null
-  incomeByCategory: CategoryItem[]
-  expenseByCategory: CategoryItem[]
-  totalIncome: number
+  revenue: CategoryItem[]
   totalExcess: number
-  totalExpenses: number
+  totalRevenue: number
+  cogs: CategoryItem[]
+  totalCogs: number
+  grossProfit: number
+  operatingGroups: OpGroup[]
+  totalOperating: number
+  operatingProfit: number
+  otherLosses: CategoryItem[]
+  totalOtherLosses: number
   totalDeposits: number
-  totalShortage: number
   netProfit: number
   incomeCount: number
   expenseCount: number
@@ -102,9 +93,97 @@ export default function ProfitLossView() {
     setTo(todayStr())
   }
 
-  const fromDateDisplay = from.split('-').reverse().join('/')
-  const toDateDisplay = to.split('-').reverse().join('/')
+  const fromDateDisplay = formatLongDate(from)
+  const toDateDisplay = formatLongDate(to)
   const isProfit = (report?.netProfit ?? 0) >= 0
+  const isOpProfit = (report?.operatingProfit ?? 0) >= 0
+
+  // Helper to render a row: label on left, amount on right
+  // kind: 'item' | 'total' | 'grandtotal' | 'header' | 'subheader'
+  const Row = ({ label, amount, kind = 'item', negative = false, showCurrency = true }: {
+    label: string
+    amount?: number
+    kind?: 'item' | 'total' | 'grandtotal' | 'header' | 'subheader'
+    negative?: boolean
+    showCurrency?: boolean
+  }) => {
+    const amountStr = amount === undefined ? '' : (negative && amount > 0 ? `(${fmt(amount)})` : fmt(amount || 0))
+    if (kind === 'header') {
+      return (
+        <div className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 px-2 py-1 border-y border-neutral-400 dark:border-neutral-600 print:border-black text-center">
+          <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-200 print:text-black">{label}</span>
+        </div>
+      )
+    }
+    if (kind === 'subheader') {
+      return (
+        <div className="px-2 pt-2 pb-1 border-b border-dotted border-neutral-300 dark:border-neutral-700 print:border-black">
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-300 print:text-black">{label}</span>
+        </div>
+      )
+    }
+    const isTotal = kind === 'total' || kind === 'grandtotal'
+    const isGrand = kind === 'grandtotal'
+    return (
+      <div className={`flex items-center justify-between px-2 ${isTotal ? 'py-1.5' : 'py-1'} ${
+        isGrand ? 'border-t-2 border-neutral-700 dark:border-neutral-300 print:border-black bg-neutral-50 dark:bg-neutral-900 print:bg-gray-100' :
+        isTotal ? 'border-t border-neutral-300 dark:border-neutral-700 print:border-black bg-neutral-50/50 dark:bg-neutral-900/50 print:bg-gray-50' :
+        'border-b border-dotted border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-dotted'
+      }`}>
+        <span className={`text-[12px] ${isGrand ? 'font-bold' : isTotal ? 'font-bold' : 'font-normal'} text-neutral-800 dark:text-neutral-200 print:text-black`}>
+          {label}
+        </span>
+        <span className={`text-[12px] tabular-nums ${isGrand ? 'font-bold' : isTotal ? 'font-bold' : 'font-normal'} text-neutral-800 dark:text-neutral-200 print:text-black`}>
+          {showCurrency ? `${CURRENCY}${amountStr}` : amountStr}
+        </span>
+      </div>
+    )
+  }
+
+  // ===== Excel/PDF export — builds a flat representation matching the report =====
+  const buildExportRows = (): (string|number)[][] => {
+    if (!report) return []
+    const rows: (string|number)[][] = []
+    const push = (a: string, b: string = '') => rows.push([a, b])
+    const itemRow = (cat: string, amt: number) => rows.push([cat, `${CURRENCY}${fmt(amt)}`])
+
+    push('REVENUE', '')
+    report.revenue.forEach((c) => itemRow(c.category, c.amount))
+    if (report.totalExcess > 0) itemRow('Excess / Extra Cash', report.totalExcess)
+    push('TOTAL REVENUE', `${CURRENCY}${fmt(report.totalRevenue)}`)
+    rows.push(['', ''])
+
+    push('COST OF GOODS SOLD (COGS)', '')
+    report.cogs.forEach((c) => itemRow(c.category, c.amount))
+    push('TOTAL COGS', `${CURRENCY}${fmt(report.totalCogs)}`)
+    push('GROSS PROFIT', `${CURRENCY}${fmt(report.grossProfit)}`)
+    rows.push(['', ''])
+
+    push('OPERATING EXPENSES', '')
+    report.operatingGroups.forEach((g) => {
+      push(g.label, '')
+      g.items.forEach((c) => itemRow(c.category, c.amount))
+      push(`Total ${g.label}`, `${CURRENCY}${fmt(g.total)}`)
+      rows.push(['', ''])
+    })
+    push('TOTAL OPERATING EXPENSES', `${CURRENCY}${fmt(report.totalOperating)}`)
+    push('OPERATING PROFIT / (LOSS)', `${CURRENCY}${fmt(report.operatingProfit)}`)
+    rows.push(['', ''])
+
+    push('OTHER LOSSES / ADJUSTMENTS', '')
+    report.otherLosses.forEach((c) => itemRow(c.category, c.amount))
+    push('TOTAL OTHER LOSSES', `${CURRENCY}${fmt(report.totalOtherLosses)}`)
+    rows.push(['', ''])
+
+    push('NET PROFIT / (LOSS)', '')
+    push(isProfit ? 'NET PROFIT' : 'NET LOSS', `${CURRENCY}${fmt(Math.abs(report.netProfit))}`)
+    rows.push(['', ''])
+
+    push('NOT INCLUDED IN PROFIT & LOSS', '')
+    push('Bank / bKash Deposits (Transfers)', `${CURRENCY}${fmt(report.totalDeposits)}`)
+    push('(Internal Fund Transfer - Not an Expense)', '')
+    return rows
+  }
 
   return (
     <div className="space-y-4">
@@ -133,6 +212,32 @@ export default function ProfitLossView() {
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
+            {report && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
+                    businessName: report.businessName,
+                    reportTitle: 'Profit & Loss Statement',
+                    dateRange: `${fromDateDisplay} to ${toDateDisplay}`,
+                    columns: [{ header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],
+                    rows: buildExportRows(),
+                  }))
+                }}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                    businessName: report.businessName,
+                    reportTitle: 'Profit & Loss Statement',
+                    dateRange: `${fromDateDisplay} to ${toDateDisplay}`,
+                    columns: [{ header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],
+                    rows: buildExportRows(),
+                  }))
+                }}>
+                  <FileText className="h-4 w-4 mr-1" /> PDF
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -143,15 +248,15 @@ export default function ProfitLossView() {
         </div>
       ) : (
         <>
-          {/* Summary cards */}
+          {/* Summary cards (screen only) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
             <Card className="border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/30 dark:border-emerald-900">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Total Income</CardTitle>
+                <CardTitle className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Total Revenue</CardTitle>
                 <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{CURRENCY}{fmt(report.totalIncome)}</div>
+                <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{CURRENCY}{fmt(report.totalRevenue)}</div>
                 <p className="text-xs text-neutral-500 mt-1">{report.incomeCount} transactions</p>
               </CardContent>
             </Card>
@@ -161,196 +266,173 @@ export default function ProfitLossView() {
                 <ArrowDownCircle className="h-4 w-4 text-rose-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-rose-700 dark:text-rose-400">{CURRENCY}{fmt(report.totalExpenses)}</div>
+                <div className="text-xl font-bold text-rose-700 dark:text-rose-400">{CURRENCY}{fmt(report.totalCogs + report.totalOperating + report.totalOtherLosses)}</div>
                 <p className="text-xs text-neutral-500 mt-1">{report.expenseCount} transactions</p>
               </CardContent>
             </Card>
-            <Card className={isProfit
+            <Card className={isOpProfit
               ? 'border-sky-200 bg-sky-50/60 dark:bg-sky-950/30 dark:border-sky-900'
               : 'border-amber-200 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-900'}>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className={`text-xs font-medium ${isProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  {isProfit ? 'Net Profit' : 'Net Loss'}
+                <CardTitle className={`text-xs font-medium ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                  Operating {isOpProfit ? 'Profit' : 'Loss'}
                 </CardTitle>
-                <TrendingUp className={`h-4 w-4 ${isProfit ? 'text-sky-600' : 'text-amber-600'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-xl font-bold ${isProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  {CURRENCY}{fmt(Math.abs(report.netProfit))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-neutral-500">Margin</CardTitle>
                 <DollarSign className="h-4 w-4 text-neutral-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">
-                  {report.totalIncome > 0
-                    ? `${((report.netProfit / report.totalIncome) * 100).toFixed(1)}%`
-                    : '—'}
+                <div className={`text-xl font-bold ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                  {CURRENCY}{fmt(Math.abs(report.operatingProfit))}
                 </div>
-                <p className="text-xs text-neutral-500 mt-1">Profit / Income ratio</p>
+                <p className="text-xs text-neutral-500 mt-1">After operating expenses</p>
+              </CardContent>
+            </Card>
+            <Card className={isProfit
+              ? 'border-emerald-300 bg-emerald-100/60 dark:bg-emerald-950/40 dark:border-emerald-800'
+              : 'border-rose-300 bg-rose-100/60 dark:bg-rose-950/40 dark:border-rose-800'}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className={`text-xs font-medium ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  {isProfit ? 'Net Profit' : 'Net Loss'}
+                </CardTitle>
+                <TrendingUp className={`h-4 w-4 ${isProfit ? 'text-emerald-600' : 'text-rose-600'}`} />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-xl font-bold ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  {CURRENCY}{fmt(Math.abs(report.netProfit))}
+                </div>
+                <p className="text-xs text-neutral-500 mt-1">After all losses</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Report sheet */}
-          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-3 sm:p-6 print:border-black print:p-2 shadow-sm">
-            {/* Header */}
-            <div className="flex items-start sm:items-end justify-between gap-2 border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black pb-2 mb-4">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* ===== Statement sheet ===== */}
+          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-4 sm:p-8 print:border-black print:p-4 shadow-sm max-w-3xl mx-auto">
+            {/* Header — centered */}
+            <div className="text-center pb-3 mb-4 border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black">
+              <div className="flex items-center justify-center gap-3 mb-1">
                 {report.logoUrl && (
-                  <img src={report.logoUrl} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded shrink-0" />
+                  <img src={report.logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded shrink-0" />
                 )}
-                <div className="text-base sm:text-2xl font-bold tracking-tight leading-tight">{report.businessName}</div>
+                <div className="text-lg sm:text-xl font-bold tracking-tight uppercase">{report.businessName}</div>
               </div>
-              <div className="text-xs sm:text-sm shrink-0">
-                <div className="text-neutral-500">Profit &amp; Loss Statement</div>
-                <div className="font-semibold tabular-nums">{fromDateDisplay} — {toDateDisplay}</div>
+              <div className="text-sm font-semibold uppercase tracking-wide">Profit &amp; Loss Statement</div>
+              <div className="text-xs text-neutral-500 mt-0.5 tabular-nums">{fromDateDisplay} to {toDateDisplay}</div>
+            </div>
+
+            {/* ===== REVENUE ===== */}
+            <div className="border border-neutral-300 dark:border-neutral-700 print:border-black rounded-sm overflow-hidden mb-4">
+              <Row label="Revenue" kind="header" />
+              {report.revenue.length === 0 && report.totalExcess === 0 ? (
+                <div className="py-3 px-2 text-center text-neutral-400 text-[12px]">No revenue in this period</div>
+              ) : (
+                <>
+                  {report.revenue.map((c) => (
+                    <Row key={c.category} label={c.category} amount={c.amount} />
+                  ))}
+                  {report.totalExcess > 0 && (
+                    <Row label="Excess / Extra Cash" amount={report.totalExcess} />
+                  )}
+                  <Row label="TOTAL REVENUE" amount={report.totalRevenue} kind="total" />
+                </>
+              )}
+            </div>
+
+            {/* ===== COGS ===== */}
+            <div className="border border-neutral-300 dark:border-neutral-700 print:border-black rounded-sm overflow-hidden mb-4">
+              <Row label="Cost of Goods Sold (COGS)" kind="header" />
+              {report.cogs.length === 0 ? (
+                <div className="py-3 px-2 text-center text-neutral-400 text-[12px]">No COGS in this period</div>
+              ) : (
+                <>
+                  {report.cogs.map((c) => (
+                    <Row key={c.category} label={c.category} amount={c.amount} />
+                  ))}
+                  <Row label="TOTAL COGS" amount={report.totalCogs} kind="total" />
+                </>
+              )}
+              <Row label="GROSS PROFIT" amount={report.grossProfit} kind="grandtotal" negative />
+            </div>
+
+            {/* ===== OPERATING EXPENSES ===== */}
+            <div className="border border-neutral-300 dark:border-neutral-700 print:border-black rounded-sm overflow-hidden mb-4">
+              <Row label="Operating Expenses" kind="header" />
+              {report.operatingGroups.length === 0 ? (
+                <div className="py-3 px-2 text-center text-neutral-400 text-[12px]">No operating expenses in this period</div>
+              ) : (
+                <>
+                  {report.operatingGroups.map((g) => (
+                    <div key={g.key}>
+                      <Row label={g.label} kind="subheader" />
+                      {g.items.map((c) => (
+                        <Row key={c.category} label={c.category} amount={c.amount} />
+                      ))}
+                      <Row label={`Total ${g.label}`} amount={g.total} kind="total" />
+                    </div>
+                  ))}
+                  <Row label="TOTAL OPERATING EXPENSES" amount={report.totalOperating} kind="total" />
+                </>
+              )}
+              <Row
+                label={isOpProfit ? 'OPERATING PROFIT' : 'OPERATING LOSS'}
+                amount={report.operatingProfit}
+                kind="grandtotal"
+                negative
+              />
+            </div>
+
+            {/* ===== OTHER LOSSES ===== */}
+            <div className="border border-neutral-300 dark:border-neutral-700 print:border-black rounded-sm overflow-hidden mb-4">
+              <Row label="Other Losses / Adjustments" kind="header" />
+              {report.otherLosses.length === 0 ? (
+                <div className="py-3 px-2 text-center text-neutral-400 text-[12px]">No other losses in this period</div>
+              ) : (
+                <>
+                  {report.otherLosses.map((c) => (
+                    <Row key={c.category} label={c.category} amount={c.amount} />
+                  ))}
+                  <Row label="TOTAL OTHER LOSSES" amount={report.totalOtherLosses} kind="total" />
+                </>
+              )}
+            </div>
+
+            {/* ===== NET PROFIT / (LOSS) ===== */}
+            <div className={`border-2 rounded-sm overflow-hidden mb-4 ${
+              isProfit
+                ? 'border-emerald-500 dark:border-emerald-700 print:border-black'
+                : 'border-rose-500 dark:border-rose-700 print:border-black'
+            }`}>
+              <Row label="Net Profit / (Loss)" kind="header" />
+              <div className={`px-2 py-3 flex items-center justify-between ${
+                isProfit
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 print:bg-gray-100'
+                  : 'bg-rose-50 dark:bg-rose-950/30 print:bg-gray-100'
+              }`}>
+                <span className="text-[14px] font-bold uppercase tracking-wide text-neutral-800 dark:text-neutral-100 print:text-black">
+                  {isProfit ? 'NET PROFIT' : 'NET LOSS'}
+                </span>
+                <span className={`text-[16px] font-bold tabular-nums ${
+                  isProfit ? 'text-emerald-700 dark:text-emerald-400 print:text-black' : 'text-rose-700 dark:text-rose-400 print:text-black'
+                }`}>
+                  {CURRENCY}{fmt(Math.abs(report.netProfit))}
+                </span>
               </div>
             </div>
 
-            {/* Two-column: Income breakdown | Expense breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4">
-              {/* Income side */}
-              <div>
-                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
-                  <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                      Income Breakdown
-                    </span>
-                  </div>
-                  <Table className="text-[12px]">
-                    <TableBody>
-                      {report.incomeByCategory.length === 0 ? (
-                        <TableRow><TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400">No income in this period</TableCell></TableRow>
-                      ) : (
-                        report.incomeByCategory.map((c) => (
-                          <TableRow key={c.category} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                            <TableCell className="py-1 px-2">{c.category}</TableCell>
-                            <TableCell className="py-1 px-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{fmt(c.amount)}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                      {report.totalExcess > 0 && (
-                        <TableRow className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                          <TableCell className="py-1 px-2">Excess / Extra Cash</TableCell>
-                          <TableCell className="py-1 px-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{fmt(report.totalExcess)}</TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[12px] font-bold">Total Income -</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                          {fmt(report.totalIncome + report.totalExcess)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Expense side */}
-              <div>
-                <div className="border border-neutral-300 dark:border-neutral-700 rounded-sm overflow-hidden print:border-black">
-                  <div className="bg-neutral-100 dark:bg-neutral-900 px-2 py-1 border-b border-neutral-300 dark:border-neutral-700 print:bg-gray-200">
-                    <span className="text-[12px] font-bold uppercase tracking-wide text-neutral-700 dark:text-neutral-300 print:text-black">
-                      Expense Breakdown
-                    </span>
-                  </div>
-                  <Table className="text-[12px]">
-                    <TableBody>
-                      {report.expenseByCategory.length === 0 ? (
-                        <TableRow><TableCell colSpan={2} className="py-3 px-2 text-center text-neutral-400">No expenses in this period</TableCell></TableRow>
-                      ) : (
-                        report.expenseByCategory.map((c) => (
-                          <TableRow key={c.category} className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                            <TableCell className="py-1 px-2">{c.category}</TableCell>
-                            <TableCell className="py-1 px-2 text-right tabular-nums text-rose-700 dark:text-rose-400">{fmt(c.amount)}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                      {report.totalShortage > 0 && (
-                        <TableRow className="border-neutral-100 dark:border-neutral-800/50 print:border-black print:border-b">
-                          <TableCell className="py-1 px-2">Cash Shortage</TableCell>
-                          <TableCell className="py-1 px-2 text-right tabular-nums text-rose-700 dark:text-rose-400">{fmt(report.totalShortage)}</TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow className="bg-neutral-50 dark:bg-neutral-900/50 print:bg-gray-100 border-t-2 border-neutral-300 dark:border-neutral-700 print:border-black">
-                        <TableCell className="py-1 px-2 text-[12px] font-bold">Total Expenses -</TableCell>
-                        <TableCell className="py-1 px-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-400">
-                          {fmt(report.totalExpenses + report.totalShortage)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
-
-            {/* Net profit/loss summary */}
-            <div className={`mt-4 rounded-sm border-2 p-4 ${isProfit ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/20 print:border-black' : 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 print:border-black'}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[12px] font-bold uppercase tracking-wide text-neutral-500">
-                    {isProfit ? 'Net Profit' : 'Net Loss'}
-                  </div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">
-                    Total Income ({CURRENCY}{fmt(report.totalIncome + report.totalExcess)}) − Total Expenses ({CURRENCY}{fmt(report.totalExpenses + report.totalShortage)})
-                  </div>
-                </div>
-                <div className={`text-2xl font-bold ${isProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  {isProfit ? '' : '-'}{CURRENCY}{fmt(Math.abs(report.netProfit))}
-                </div>
+            {/* ===== NOT INCLUDED ===== */}
+            <div className="border border-neutral-300 dark:border-neutral-700 print:border-black rounded-sm overflow-hidden bg-neutral-50/50 dark:bg-neutral-900/30 print:bg-gray-50">
+              <Row label="Not Included in Profit & Loss" kind="header" />
+              <Row label="Bank / bKash Deposits (Transfers)" amount={report.totalDeposits} />
+              <div className="px-2 py-1 text-[11px] italic text-neutral-500 print:text-black">
+                (Internal Fund Transfer — Not an Expense)
               </div>
             </div>
 
             {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[12px]">
-              <div className="text-neutral-500">Deposits (transfers): {CURRENCY}{fmt(report.totalDeposits)} — not counted as expense</div>
-              <div className="text-neutral-400 text-[11px]">Generated on {new Date().toLocaleString('en-GB')}</div>
+            <div className="mt-4 pt-3 border-t border-neutral-300 dark:border-neutral-700 print:border-black flex items-center justify-between text-[11px]">
+              <div className="text-neutral-500">
+                Operating: {report.operatingGroups.length} group(s) · {report.expenseCount} expense txns · {report.incomeCount} income txns
+              </div>
+              <div className="text-neutral-400">Generated on {new Date().toLocaleString('en-GB')}</div>
             </div>
-          </div>
-
-          {/* Export buttons */}
-          <div className="flex gap-2 print:hidden">
-            <Button variant="outline" size="sm" onClick={() => {
-              const allRows = [
-                ...report.incomeByCategory.map((c) => ['Income', c.category, fmt(c.amount)] as (string|number)[]),
-                ...(report.totalExcess > 0 ? [['Income', 'Excess / Extra Cash', fmt(report.totalExcess)] as (string|number)[]] : []),
-                ...report.expenseByCategory.map((c) => ['Expense', c.category, fmt(c.amount)] as (string|number)[]),
-                ...(report.totalShortage > 0 ? [['Expense', 'Cash Shortage', fmt(report.totalShortage)] as (string|number)[]] : []),
-              ]
-              import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
-                businessName: report.businessName,
-                reportTitle: 'Profit & Loss Report',
-                dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
-                columns: [{ header: 'Type', key: 'type' }, { header: 'Category', key: 'category' }, { header: 'Amount', key: 'amount' }],
-                rows: allRows,
-                totalsRow: [isProfit ? 'Net Profit' : 'Net Loss', '', fmt(Math.abs(report.netProfit))],
-              }))
-            }}>
-              <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => {
-              const allRows = [
-                ...report.incomeByCategory.map((c) => ['Income', c.category, fmt(c.amount)] as (string|number)[]),
-                ...(report.totalExcess > 0 ? [['Income', 'Excess / Extra Cash', fmt(report.totalExcess)] as (string|number)[]] : []),
-                ...report.expenseByCategory.map((c) => ['Expense', c.category, fmt(c.amount)] as (string|number)[]),
-                ...(report.totalShortage > 0 ? [['Expense', 'Cash Shortage', fmt(report.totalShortage)] as (string|number)[]] : []),
-              ]
-              import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
-                businessName: report.businessName,
-                reportTitle: 'Profit & Loss Report',
-                dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
-                columns: [{ header: 'Type', key: 'type' }, { header: 'Category', key: 'category' }, { header: 'Amount', key: 'amount' }],
-                rows: allRows,
-                totalsRow: [isProfit ? 'Net Profit' : 'Net Loss', '', fmt(Math.abs(report.netProfit))],
-              }))
-            }}>
-              <FileText className="h-4 w-4 mr-1" /> PDF
-            </Button>
           </div>
         </>
       )}
