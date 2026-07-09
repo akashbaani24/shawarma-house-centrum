@@ -54,6 +54,7 @@ const ALL_RIGHTS = [
   { key: 'expense-details', label: 'Expense Details' },
   { key: 'investment-report', label: 'Investment Report' },
   { key: 'supplier-report', label: 'Supplier Report' },
+  { key: 'profit-loss', label: 'Profit & Loss' },
 ]
 
 interface UserItem {

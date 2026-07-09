@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Settings,
   Truck,
+  Scale,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -33,6 +34,7 @@ import InvestmentReportView from '@/components/views/investment-report-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
 import SupplierReportView from '@/components/views/supplier-report-view'
+import ProfitLossView from '@/components/views/profit-loss-view'
 import ManageUsersView from '@/components/views/manage-users-view'
 import ResetDataView from '@/components/views/reset-data-view'
 import BankAccountsView from '@/components/views/bank-accounts-view'
@@ -50,6 +52,7 @@ export type ViewKey =
   | 'expense-details'
   | 'investment-report'
   | 'supplier-report'
+  | 'profit-loss'
   | 'users'
   | 'reset'
   | 'settings'
@@ -81,6 +84,7 @@ const REPORT_NAV: NavItem[] = [
   { key: 'expense-details', label: 'Expense Details', icon: Receipt },
   { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
   { key: 'supplier-report', label: 'Supplier Report', icon: Truck },
+  { key: 'profit-loss', label: 'Profit & Loss', icon: Scale },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -304,6 +308,7 @@ function AppShellInner({
             {view === 'expense-details' && <ExpenseDetailsView />}
             {view === 'investment-report' && <InvestmentReportView />}
             {view === 'supplier-report' && <SupplierReportView />}
+            {view === 'profit-loss' && <ProfitLossView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'settings' && isAdmin && <SettingsView />}
             {view === 'reset' && isAdmin && <ResetDataView />}

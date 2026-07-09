@@ -17,6 +17,7 @@ export const ALL_RIGHTS = [
   'expense-details',
   'investment-report',
   'supplier-report',
+  'profit-loss',
   'bank-accounts',
 ] as const
 
