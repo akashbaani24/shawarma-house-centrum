@@ -89,8 +89,18 @@ export default function ExpenseDetailsView() {
   const [to, setTo] = useState(todayStr())
   const [report, setReport] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
-  const pagination = usePagination(report?.entries?.length ?? 0)
-  const paginatedEntries = report?.entries?.slice(pagination.startIndex, pagination.endIndex) ?? []
+  const pagination = usePagination(filteredCount)
+  const [searchText, setSearchText] = useState('')
+  const filteredEntries = (report?.entries ?? []).filter((e) => {
+    if (!searchText.trim()) return true
+    const q = searchText.toLowerCase().trim()
+    return e.category.toLowerCase().includes(q) ||
+      (e.note?.toLowerCase().includes(q) ?? false) ||
+      String(e.amount).includes(q) ||
+      e.date.includes(q)
+  })
+  const filteredCount = filteredEntries.length
+  const paginatedEntries = filteredEntries.slice(pagination.startIndex, pagination.endIndex)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -206,6 +216,18 @@ export default function ExpenseDetailsView() {
             )}
           </div>
         </div>
+        {/* Search box */}
+        {report && report.entries.length > 0 && (
+          <div className="mt-3">
+            <Input
+              type="text"
+              placeholder="Search by category, note, amount, date..."
+              value={searchText}
+              onChange={(e) => { setSearchText(e.target.value); pagination.reset(); }}
+              className="text-sm"
+            />
+          </div>
+        )}
       </div>
 
       {loading || !report ? (
@@ -407,7 +429,7 @@ export default function ExpenseDetailsView() {
 
             {/* Pagination */}
             <div className="print:hidden">
-              <PaginationControls totalItems={report.entries.length} pagination={pagination} />
+              <PaginationControls totalItems={filteredCount} pagination={pagination} />
             </div>
 
             {/* Footer */}
