@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
               FROM "Entry" e
               LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
               WHERE e.date = ? AND e.source = ? AND e.kind IN (?, ?)
-              ORDER BY e."createdAt" ASC`,
+              ORDER BY e.category ASC, e."createdAt" ASC`,
         args: [date, 'BRANCH', 'INCOME', 'EXPENSE'],
       }),
       libsql.execute({ sql: 'SELECT denomination, count FROM "Denomination" WHERE date = ?', args: [date] }),

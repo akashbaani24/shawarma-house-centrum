@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const [bills, businessProfile, suppliers] = await Promise.all([
     db.supplierBill.findMany({
       where,
-      orderBy: [{ billDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ supplier: { name: 'asc' } }, { billDate: 'asc' }, { createdAt: 'asc' }],
       include: {
         supplier: { select: { id: true, name: true } },
       },

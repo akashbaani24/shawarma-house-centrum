@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     if (date) { sql += ' AND date = ?'; args.push(date) }
     if (kind && ['INCOME', 'EXPENSE', 'INVEST'].includes(kind)) { sql += ' AND kind = ?'; args.push(kind) }
     if (source && ['BRANCH', 'OFFICE'].includes(source)) { sql += ' AND source = ?'; args.push(source) }
-    sql += ' ORDER BY date DESC, "createdAt" DESC LIMIT 100'
+    sql += ' ORDER BY category ASC, date DESC, "createdAt" DESC LIMIT 100'
 
     const res = await libsql.execute({ sql, args })
     return NextResponse.json({ entries: res.rows })

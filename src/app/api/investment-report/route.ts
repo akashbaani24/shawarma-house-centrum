@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const [entries, businessProfile] = await Promise.all([
     db.entry.findMany({
       where: { kind: 'INVEST', date: { gte: from, lte: to } },
-      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ category: 'asc' }, { date: 'asc' }, { createdAt: 'asc' }],
       select: {
         id: true,
         category: true,
