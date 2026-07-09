@@ -168,9 +168,9 @@ export default function InvestmentReportView() {
                     businessName: report.businessName,
                     reportTitle: 'Investment Report',
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
-                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Method', key: 'method' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
-                    rows: report.entries.map((e) => [e.date, e.category, e.paymentMethod, e.note || '', fmt(e.amount)]),
-                    totalsRow: ['Total', '', '', '', fmt(report.total)],
+                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Method', key: 'method' }, { header: 'Account Name', key: 'acctName' }, { header: 'Account Number', key: 'acctNum' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
+                    rows: report.entries.map((e) => [e.date, e.category, e.paymentMethod, e.bankAccount?.accountName || '', e.bankAccount?.accountNumber || '', e.note || '', fmt(e.amount)]),
+                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
@@ -180,9 +180,9 @@ export default function InvestmentReportView() {
                     businessName: report.businessName,
                     reportTitle: 'Investment Report',
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
-                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Method', key: 'method' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
-                    rows: report.entries.map((e) => [e.date, e.category, e.paymentMethod, e.note || '', fmt(e.amount)]),
-                    totalsRow: ['Total', '', '', '', fmt(report.total)],
+                    columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Method', key: 'method' }, { header: 'Account Name', key: 'acctName' }, { header: 'Account Number', key: 'acctNum' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],
+                    rows: report.entries.map((e) => [e.date, e.category, e.paymentMethod, e.bankAccount?.accountName || '', e.bankAccount?.accountNumber || '', e.note || '', fmt(e.amount)]),
+                    totalsRow: ['Total', '', '', '', '', '', fmt(report.total)],
                   }))
                 }}>
                   <FileText className="h-4 w-4 mr-1" /> PDF
@@ -299,6 +299,8 @@ export default function InvestmentReportView() {
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Date</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Category</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Method</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Account Name</TableHead>
+                    <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Account Number</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold">Note</TableHead>
                     <TableHead className="h-6 py-1 px-2 text-[10px] font-semibold text-right w-28">Amount</TableHead>
                   </TableRow>
@@ -306,7 +308,7 @@ export default function InvestmentReportView() {
                 <TableBody>
                   {report.entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
+                      <TableCell colSpan={7} className="py-6 px-2 text-center text-neutral-400 text-[11px]">
                         No investment entries in this period
                       </TableCell>
                     </TableRow>
@@ -319,12 +321,13 @@ export default function InvestmentReportView() {
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
                             e.paymentMethod === 'CASH'
                               ? 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-                              : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400'
+                              : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200 print:bg-neutral-200 print:text-black'
                           }`}>
                             {METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}
-                            {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
                           </span>
                         </TableCell>
+                        <TableCell className="py-1 px-2 text-neutral-600 dark:text-neutral-400">{e.bankAccount?.accountName || '—'}</TableCell>
+                        <TableCell className="py-1 px-2 text-neutral-600 dark:text-neutral-400 tabular-nums">{e.bankAccount?.accountNumber || '—'}</TableCell>
                         <TableCell className="py-1 px-2 text-neutral-500 max-w-[200px] truncate">{e.note || '—'}</TableCell>
                         <TableCell className="py-1 px-2 text-right tabular-nums font-semibold text-amber-700 dark:text-amber-400">
                           {fmt(e.amount)}
@@ -333,7 +336,7 @@ export default function InvestmentReportView() {
                     ))
                   )}
                   <TableRow className="bg-neutral-100 dark:bg-neutral-900 print:bg-gray-200 border-t-2 border-neutral-800 dark:border-neutral-200 print:border-black">
-                    <TableCell colSpan={4} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
+                    <TableCell colSpan={6} className="py-1.5 px-2 text-[11px] font-bold text-right">Grand Total -</TableCell>
                     <TableCell className="py-1.5 px-2 text-right tabular-nums font-bold">{fmt(report.total)}</TableCell>
                   </TableRow>
                 </TableBody>
