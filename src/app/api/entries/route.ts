@@ -15,12 +15,20 @@ export async function GET(req: NextRequest) {
   const source = searchParams.get('source')
 
   try {
-    let sql = 'SELECT id, kind, category, amount, note, date, "paymentMethod", source FROM "Entry" WHERE 1=1'
+    // LEFT JOIN BankAccount so the entry list can show the bank name + account number.
+    // Sort by createdAt DESC first so the most recent entry appears at the top.
+    let sql = `SELECT e.id, e.kind, e.category, e.amount, e.note, e.date,
+                      e."paymentMethod", e.source,
+                      e."bankAccountId",
+                      b."bankName", b."accountName", b."accountNumber"
+               FROM "Entry" e
+               LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
+               WHERE 1=1`
     const args: (string)[] = []
-    if (date) { sql += ' AND date = ?'; args.push(date) }
-    if (kind && ['INCOME', 'EXPENSE', 'INVEST'].includes(kind)) { sql += ' AND kind = ?'; args.push(kind) }
-    if (source && ['BRANCH', 'OFFICE'].includes(source)) { sql += ' AND source = ?'; args.push(source) }
-    sql += ' ORDER BY category ASC, date DESC, "createdAt" DESC LIMIT 100'
+    if (date) { sql += ' AND e.date = ?'; args.push(date) }
+    if (kind && ['INCOME', 'EXPENSE', 'INVEST'].includes(kind)) { sql += ' AND e.kind = ?'; args.push(kind) }
+    if (source && ['BRANCH', 'OFFICE'].includes(source)) { sql += ' AND e.source = ?'; args.push(source) }
+    sql += ' ORDER BY e."createdAt" DESC, e.date DESC, e.category ASC LIMIT 100'
 
     const res = await libsql.execute({ sql, args })
     return NextResponse.json({ entries: res.rows })

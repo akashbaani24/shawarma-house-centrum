@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,12 @@ import {
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   ArrowUpCircle,
   ArrowDownCircle,
   Plus,
@@ -22,6 +29,7 @@ import {
   Loader2,
   Tags,
   TrendingUp,
+  Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -64,6 +72,7 @@ interface EntryItem {
   note: string | null
   date: string
   paymentMethod?: string
+  bankAccountId?: string | null
   bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null
 }
 
@@ -404,6 +413,65 @@ export default function EntryView({
     } catch {
       setEntries(prev)
       toast.error('Failed to delete')
+    }
+  }
+
+  // ===== Edit entry state (admin only) =====
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'ADMIN'
+  const [editingEntry, setEditingEntry] = useState<EntryItem | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editNote, setEditNote] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editPaymentMethod, setEditPaymentMethod] = useState<string>('CASH')
+  const [editBankAccountId, setEditBankAccountId] = useState<string>('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const openEditDialog = (e: EntryItem) => {
+    setEditingEntry(e)
+    setEditAmount(String(e.amount))
+    setEditNote(e.note || '')
+    setEditDate(e.date)
+    setEditPaymentMethod(e.paymentMethod || 'CASH')
+    setEditBankAccountId(e.bankAccountId || '')
+  }
+
+  const editNeedsBankAccount = editPaymentMethod === 'BANK' || editPaymentMethod === 'CARD' || editPaymentMethod === 'MOBILE_BANK'
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingEntry) return
+    const amt = parseFloat(editAmount)
+    if (isNaN(amt) || amt <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    if (!editDate || !/^\d{4}-\d{2}-\d{2}$/.test(editDate)) {
+      toast.error('Please enter a valid date')
+      return
+    }
+    setEditSubmitting(true)
+    try {
+      const res = await fetch(`/api/entries/${editingEntry.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amt,
+          note: editNote,
+          date: editDate,
+          paymentMethod: editPaymentMethod,
+          bankAccountId: editNeedsBankAccount ? editBankAccountId : null,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d?.error || 'Failed')
+      toast.success('Entry updated')
+      setEditingEntry(null)
+      loadEntries()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setEditSubmitting(false)
     }
   }
 
@@ -793,15 +861,30 @@ export default function EntryView({
                       </div>
                       {e.note && <div className="text-xs text-neutral-400 mt-0.5 truncate">{e.note}</div>}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
-                      onClick={() => handleDelete(e.id)}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-60 hover:opacity-100"
+                          onClick={() => openEditDialog(e)}
+                          aria-label="Edit"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
+                          onClick={() => handleDelete(e.id)}
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -809,6 +892,102 @@ export default function EntryView({
           </CardContent>
         </Card>
       </div>
+
+      {/* ===== Edit Entry Dialog (admin only) ===== */}
+      <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Entry — {editingEntry?.category}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block">Amount ({CURRENCY})</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Date</Label>
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">{isIncome ? 'Receive Method' : 'Payment Method'}</Label>
+              <Select value={editPaymentMethod} onValueChange={(v) => { setEditPaymentMethod(v); if (v !== 'BANK' && v !== 'CARD' && v !== 'MOBILE_BANK') setEditBankAccountId('') }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {editNeedsBankAccount && (
+              <div>
+                <Label className="mb-1.5 block">
+                  {editPaymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : editPaymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
+                </Label>
+                {bankAccounts.filter((a) => a.isActive).length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      No active bank accounts. Please add one in Bank Accounts first.
+                    </p>
+                  </div>
+                ) : (
+                  <Select value={editBankAccountId} onValueChange={setEditBankAccountId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${editPaymentMethod === 'MOBILE_BANK' ? 'mobile account' : 'bank account'}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.filter((a) => a.isActive).map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.bankName} — {a.accountName} ({a.accountNumber})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+            <div>
+              <Label className="mb-1.5 block">Note (optional)</Label>
+              <Textarea
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingEntry(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1" disabled={editSubmitting}>
+                {editSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
+            <p className="text-[11px] text-neutral-400 text-center">
+              Only amount, date, payment method, bank account, and note can be edited.
+              To change the type/category/supplier, delete and re-add the entry.
+            </p>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
