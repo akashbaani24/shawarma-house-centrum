@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { libsql, db } from '@/lib/db'
 
 // POST /api/admin/cleanup-supplier-name { oldName, targetSupplierId }
 //
 // Admin-only. Fixes entries that STILL carry an old supplier name in
-// Entry.category even after a Supplier Merge — this happens when the
-// entries were originally created as Regular Expense (supplierId = NULL)
-// but the user typed the supplier NAME as the category by mistake, OR
-// when the merge API's category-rewrite was skipped because supplierId
-// did not match.
+// Entry.category even after a Supplier Merge — happens when entries
+// were created as Regular Expense (supplierId = NULL) with the supplier
+// name typed as the category.
 //
-// What this does:
-//   1. Validates that targetSupplierId exists in the Supplier table
-//   2. Finds every Entry whose category EXACTLY matches oldName
-//      (case-insensitive) — regardless of supplierId
-//   3. Updates each such Entry:
-//       - category → target supplier's name
-//       - supplierId → targetSupplierId
-//       (so the entry now shows up under the correct supplier everywhere:
-//        P&L COGS, Payment History, Supplier Due, Branch Daily, etc.)
-//   4. Does NOT touch SupplierBill (those were already re-pointed during
-//      the original merge, OR they don't exist for these entries)
-//   5. Does NOT delete any Supplier record (this is just a data fix)
-//
-// Returns the count of entries updated so the admin can verify.
+// Implementation note: uses raw libsql (not Prisma) because Prisma's
+// `mode: 'insensitive'` does not work on SQLite — that was the bug
+// in the previous version. SQLite's LIKE is case-insensitive by default
+// for ASCII, but we use LOWER() to be safe across all characters.
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -45,44 +33,67 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'targetSupplierId is required' }, { status: 400 })
     }
 
-    // Validate target supplier
+    // Validate target supplier (use Prisma for this single lookup — it's fine)
     const target = await db.supplier.findUnique({ where: { id: targetSupplierId } })
     if (!target) {
       return NextResponse.json({ error: 'Target supplier not found' }, { status: 404 })
     }
 
-    // Find all entries whose category matches oldName (case-insensitive)
-    // Use Prisma findMany first so we can show the user what will change
-    const matching = await db.entry.findMany({
-      where: { category: { equals: oldName, mode: 'insensitive' } },
-      select: { id: true, category: true, supplierId: true, amount: true, date: true, source: true, note: true },
+    // STEP 1: Find all matching entries via raw libsql (case-insensitive
+    // via LOWER()). This is the diagnostic step — show the admin what
+    // would change BEFORE actually updating.
+    const findRes = await libsql.execute({
+      sql: `SELECT id, category, "supplierId", amount, date, source, note
+            FROM "Entry"
+            WHERE LOWER(category) = LOWER(?)`,
+      args: [oldName],
     })
 
-    if (matching.length === 0) {
+    const matched = findRes.rows as {
+      id: string; category: string; supplierId: string | null
+      amount: number; date: string; source: string; note: string | null
+    }[]
+
+    if (matched.length === 0) {
+      // Also check what entries DO exist with a similar name (debug info)
+      const debugRes = await libsql.execute({
+        sql: `SELECT DISTINCT category, COUNT(*) as cnt
+              FROM "Entry"
+              WHERE LOWER(category) LIKE LOWER(?)
+              GROUP BY category
+              ORDER BY cnt DESC`,
+        args: [`%${oldName}%`],
+      })
       return NextResponse.json({
         ok: true,
-        message: `No entries found with category = "${oldName}". Nothing to fix.`,
+        message: `No entries found with category EXACTLY = "${oldName}". Nothing to fix.`,
         updatedCount: 0,
         targetSupplier: target.name,
+        debug: {
+          hint: 'Entries with SIMILAR (contains) category names:',
+          similarCategories: debugRes.rows,
+        },
       })
     }
 
-    // Update all matching entries: set category to target name + supplierId to target id
-    const updated = await db.entry.updateMany({
-      where: { category: { equals: oldName, mode: 'insensitive' } },
-      data: {
-        category: target.name,
-        supplierId: targetSupplierId,
-      },
+    // STEP 2: Update all matching entries via raw libsql.
+    // Set category = target.name and supplierId = targetSupplierId.
+    const updateRes = await libsql.execute({
+      sql: `UPDATE "Entry"
+            SET category = ?, "supplierId" = ?
+            WHERE LOWER(category) = LOWER(?)`,
+      args: [target.name, targetSupplierId, oldName],
     })
+
+    // updateRes.rowsAffected contains the count for libsql
+    const updatedCount = (updateRes as unknown as { rowsAffected?: number }).rowsAffected ?? matched.length
 
     return NextResponse.json({
       ok: true,
-      message: `Updated ${updated.count} entries: category "${oldName}" → "${target.name}", supplierId → ${targetSupplierId}.`,
-      updatedCount: updated.count,
+      message: `Updated ${updatedCount} entries: category "${oldName}" → "${target.name}", supplierId → ${targetSupplierId}.`,
+      updatedCount,
       targetSupplier: target.name,
-      // Show a preview of what was changed (first 10 entries)
-      preview: matching.slice(0, 10).map((e) => ({
+      preview: matched.slice(0, 10).map((e) => ({
         id: e.id,
         before: { category: e.category, supplierId: e.supplierId },
         after: { category: target.name, supplierId: targetSupplierId },
@@ -91,7 +102,7 @@ export async function POST(req: NextRequest) {
         source: e.source,
         note: e.note,
       })),
-      totalMatched: matching.length,
+      totalMatched: matched.length,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
