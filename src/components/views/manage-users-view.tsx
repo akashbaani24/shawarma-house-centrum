@@ -55,7 +55,12 @@ const ALL_RIGHTS = [
   { key: 'expense-details', label: 'Branch Expense Report' },
   { key: 'investment-report', label: 'Investment Report' },
   { key: 'supplier-report', label: 'Supplier Report' },
+  { key: 'supplier-due', label: 'Supplier Due Report' },
   { key: 'profit-loss', label: 'Profit & Loss' },
+  { key: 'monthly-summary', label: 'Monthly Financial Summary' },
+  { key: 'payment-history', label: 'Payment History' },
+  { key: 'deposit-report', label: 'Deposit Report' },
+  { key: 'expense-comparison', label: 'Expense Comparison' },
 ]
 
 interface UserItem {

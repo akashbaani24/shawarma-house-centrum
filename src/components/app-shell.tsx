@@ -23,6 +23,7 @@ import {
   Settings,
   Truck,
   Scale,
+  DollarSign,
 } from 'lucide-react'
 import DashboardView from '@/components/views/dashboard-view'
 import EntryView from '@/components/views/entry-view'
@@ -32,6 +33,11 @@ import DailyReportView from '@/components/views/daily-report-view'
 import ExpenseDetailsView from '@/components/views/expense-details-view'
 import IncomeReportView from '@/components/views/income-report-view'
 import InvestmentReportView from '@/components/views/investment-report-view'
+import MonthlySummaryView from '@/components/views/monthly-summary-view'
+import SupplierDueView from '@/components/views/supplier-due-view'
+import PaymentHistoryView from '@/components/views/payment-history-view'
+import DepositReportView from '@/components/views/deposit-report-view'
+import ExpenseComparisonView from '@/components/views/expense-comparison-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
 import SupplierReportView from '@/components/views/supplier-report-view'
@@ -55,6 +61,11 @@ export type ViewKey =
   | 'investment-report'
   | 'supplier-report'
   | 'profit-loss'
+  | 'monthly-summary'
+  | 'supplier-due'
+  | 'payment-history'
+  | 'deposit-report'
+  | 'expense-comparison'
   | 'users'
   | 'reset'
   | 'settings'
@@ -93,7 +104,12 @@ const REPORT_NAV: NavItem[] = [
   { key: 'expense-details', label: 'Branch Expense Report', icon: Receipt },
   { key: 'investment-report', label: 'Investment Report', icon: TrendingUp },
   { key: 'supplier-report', label: 'Supplier Report', icon: Truck },
+  { key: 'supplier-due', label: 'Supplier Due Report', icon: Truck },
   { key: 'profit-loss', label: 'Profit & Loss', icon: Scale },
+  { key: 'monthly-summary', label: 'Monthly Financial Summary', icon: DollarSign },
+  { key: 'payment-history', label: 'Payment History', icon: Receipt },
+  { key: 'deposit-report', label: 'Deposit Report', icon: Landmark },
+  { key: 'expense-comparison', label: 'Expense Comparison', icon: Scale },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -370,6 +386,11 @@ function AppShellInner({
             {view === 'investment-report' && <InvestmentReportView />}
             {view === 'supplier-report' && <SupplierReportView />}
             {view === 'profit-loss' && <ProfitLossView />}
+            {view === 'monthly-summary' && <MonthlySummaryView />}
+            {view === 'supplier-due' && <SupplierDueView />}
+            {view === 'payment-history' && <PaymentHistoryView />}
+            {view === 'deposit-report' && <DepositReportView />}
+            {view === 'expense-comparison' && <ExpenseComparisonView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'settings' && isAdmin && <SettingsView />}
             {view === 'reset' && isAdmin && <ResetDataView />}
