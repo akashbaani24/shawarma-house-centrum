@@ -1,0 +1,740 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useState, useCallback, useMemo } from 'react'
+     4→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Label } from '@/components/ui/label'
+     8→import { Textarea } from '@/components/ui/textarea'
+     9→import {
+    10→  Select,
+    11→  SelectContent,
+    12→  SelectItem,
+    13→  SelectTrigger,
+    14→  SelectValue,
+    15→} from '@/components/ui/select'
+    16→import {
+    17→  ArrowUpCircle,
+    18→  ArrowDownCircle,
+    19→  Plus,
+    20→  Trash2,
+    21→  Loader2,
+    22→  Tags,
+    23→  TrendingUp,
+    24→} from 'lucide-react'
+    25→import { toast } from 'sonner'
+    26→
+    27→function todayStr(): string {
+    28→  const d = new Date()
+    29→  const y = d.getFullYear()
+    30→  const m = String(d.getMonth() + 1).padStart(2, '0')
+    31→  const day = String(d.getDate()).padStart(2, '0')
+    32→  return `${y}-${m}-${day}`
+    33→}
+    34→
+    35→function fmt(n: number): string {
+    36→  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    37→}
+    38→
+    39→const CURRENCY = '৳'
+    40→
+    41→interface TypeItem {
+    42→  id: string
+    43→  name: string
+    44→  kind: string
+    45→}
+    46→
+    47→interface ExpenseCategoryItem {
+    48→  id: string
+    49→  name: string
+    50→  itemType: string // "TYPE" | "SUPPLIER"
+    51→}
+    52→
+    53→interface SupplierItem {
+    54→  id: string
+    55→  name: string
+    56→}
+    57→
+    58→interface EntryItem {
+    59→  id: string
+    60→  kind: string
+    61→  category: string
+    62→  amount: number
+    63→  note: string | null
+    64→  date: string
+    65→  paymentMethod?: string
+    66→  bankAccount?: { bankName: string; accountName: string; accountNumber: string } | null
+    67→}
+    68→
+    69→interface BankAccountItem {
+    70→  id: string
+    71→  bankName: string
+    72→  accountName: string
+    73→  accountNumber: string
+    74→  isActive: boolean
+    75→}
+    76→
+    77→const PAYMENT_METHODS = [
+    78→  { value: 'CASH', label: 'Cash' },
+    79→  { value: 'CARD', label: 'Card' },
+    80→  { value: 'BANK', label: 'Bank' },
+    81→  { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
+    82→]
+    83→
+    84→export default function EntryView({
+    85→  kind,
+    86→  source = 'BRANCH',
+    87→  title,
+    88→  accentColor,
+    89→}: {
+    90→  kind: 'INCOME' | 'EXPENSE' | 'INVEST'
+    91→  source?: 'BRANCH' | 'OFFICE'
+    92→  title?: string
+    93→  accentColor?: 'emerald' | 'rose' | 'amber'
+    94→}) {
+    95→  const isIncome = kind === 'INCOME'
+    96→  const accent = accentColor ?? (isIncome ? 'emerald' : 'rose')
+    97→
+    98→  const [types, setTypes] = useState<TypeItem[]>([])
+    99→  const [entries, setEntries] = useState<EntryItem[]>([])
+   100→  const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([])
+   101→  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategoryItem[]>([])
+   102→  const [suppliers, setSuppliers] = useState<SupplierItem[]>([])
+   103→  const [loadingTypes, setLoadingTypes] = useState(true)
+   104→  const [loadingEntries, setLoadingEntries] = useState(true)
+   105→
+   106→  const [typeId, setTypeId] = useState<string>('')
+   107→  const [expenseCategoryId, setExpenseCategoryId] = useState<string>('')
+   108→  const [supplierId, setSupplierId] = useState<string>('')
+   109→  const [amount, setAmount] = useState('')
+   110→  const [note, setNote] = useState('')
+   111→  const [date, setDate] = useState(todayStr())
+   112→  const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
+   113→  const [bankAccountId, setBankAccountId] = useState<string>('')
+   114→  const [submitting, setSubmitting] = useState(false)
+   115→
+   116→  // Supplier bill fields (shown when Supplier Bill is selected)
+   117→  const [billNumber, setBillNumber] = useState('')
+   118→  const [billAmount, setBillAmount] = useState('')
+   119→  const [paidAmount, setPaidAmount] = useState('')
+   120→
+   121→  const loadTypes = useCallback(async () => {
+   122→    setLoadingTypes(true)
+   123→    try {
+   124→      const res = await fetch(`/api/types?kind=${kind}`, { cache: 'no-store' })
+   125→      const d = await res.json()
+   126→      if (res.ok) {
+   127→        setTypes(d.types)
+   128→        if (d.types.length > 0) setTypeId(d.types[0].id)
+   129→      }
+   130→    } catch {
+   131→      // ignore
+   132→    } finally {
+   133→      setLoadingTypes(false)
+   134→    }
+   135→  }, [kind])
+   136→
+   137→  // Entry list: date filter + search
+   138→  const [filterDate, setFilterDate] = useState<string>('') // empty = all dates
+   139→  const [searchText, setSearchText] = useState<string>('')
+   140→
+   141→  const loadEntries = useCallback(async () => {
+   142→    setLoadingEntries(true)
+   143→    try {
+   144→      let url = `/api/entries?kind=${kind}&source=${source}`
+   145→      if (filterDate) url += `&date=${filterDate}`
+   146→      const res = await fetch(url, { cache: 'no-store' })
+   147→      const d = await res.json()
+   148→      if (res.ok) setEntries(d.entries)
+   149→    } catch {
+   150→      // ignore
+   151→    } finally {
+   152→      setLoadingEntries(false)
+   153→    }
+   154→  }, [kind, source, filterDate])
+   155→
+   156→  const loadBankAccounts = useCallback(async () => {
+   157→    try {
+   158→      const res = await fetch('/api/bank-accounts', { cache: 'no-store' })
+   159→      const d = await res.json()
+   160→      if (res.ok) setBankAccounts(d.bankAccounts)
+   161→    } catch {
+   162→      // ignore
+   163→    }
+   164→  }, [])
+   165→
+   166→  const loadExpenseCategories = useCallback(async () => {
+   167→    try {
+   168→      const res = await fetch('/api/expense-categories', { cache: 'no-store' })
+   169→      const d = await res.json()
+   170→      if (res.ok) {
+   171→        setExpenseCategories(d.categories)
+   172→        // Default-select the first category ONLY if nothing is selected yet
+   173→        // (don't reset on every reload — that would override user selection)
+   174→        setExpenseCategoryId((prev) => prev || (d.categories.length > 0 ? d.categories[0].id : ''))
+   175→      }
+   176→    } catch {
+   177→      // ignore
+   178→    }
+   179→  }, [])
+   180→
+   181→  const loadSuppliers = useCallback(async () => {
+   182→    try {
+   183→      const res = await fetch('/api/suppliers', { cache: 'no-store' })
+   184→      const d = await res.json()
+   185→      if (res.ok) setSuppliers(d.suppliers)
+   186→    } catch {
+   187→      // ignore
+   188→    }
+   189→  }, [])
+   190→
+   191→  useEffect(() => {
+   192→    loadTypes()
+   193→    loadEntries()
+   194→    loadBankAccounts()
+   195→    if (kind === 'EXPENSE') {
+   196→      loadExpenseCategories()
+   197→      loadSuppliers()
+   198→    }
+   199→  }, [loadTypes, loadEntries, loadBankAccounts, loadExpenseCategories, loadSuppliers, kind])
+   200→
+   201→  // When expenseCategory changes, reset the sub-selection
+   202→  const selectedExpenseCategory = expenseCategories.find((c) => c.id === expenseCategoryId)
+   203→  const isSupplierCategory = selectedExpenseCategory?.itemType === 'SUPPLIER'
+   204→  const isDepositCategory = selectedExpenseCategory?.name?.toLowerCase() === 'deposit'
+   205→
+   206→  // For Deposit category, load DEPOSIT-kind types instead of EXPENSE-kind types
+   207→  const [depositTypes, setDepositTypes] = useState<TypeItem[]>([])
+   208→  useEffect(() => {
+   209→    if (kind === 'EXPENSE' && isDepositCategory) {
+   210→      fetch('/api/types?kind=DEPOSIT', { cache: 'no-store' })
+   211→        .then((r) => r.json())
+   212→        .then((d) => {
+   213→          setDepositTypes(d.types || [])
+   214→          if (d.types?.length > 0) setTypeId(d.types[0].id)
+   215→        })
+   216→        .catch(() => {})
+   217→    }
+   218→  }, [isDepositCategory, kind])
+   219→
+   220→  useEffect(() => {
+   221→    setTypeId('')
+   222→    setSupplierId('')
+   223→    setBillNumber('')
+   224→    setBillAmount('')
+   225→    setPaidAmount('')
+   226→  }, [expenseCategoryId])
+   227→
+   228→  // Reset bank account when method changes away from BANK/MOBILE_BANK
+   229→  useEffect(() => {
+   230→    if (paymentMethod !== 'BANK' && paymentMethod !== 'MOBILE_BANK' && paymentMethod !== 'CARD') {
+   231→      setBankAccountId('')
+   232→    }
+   233→  }, [paymentMethod])
+   234→
+   235→  // Bank account selector shows for BANK, CARD, and MOBILE_BANK
+   236→  const needsBankAccount = paymentMethod === 'BANK' || paymentMethod === 'MOBILE_BANK' || paymentMethod === 'CARD'
+   237→
+   238→  const handleSubmit = async (e: React.FormEvent) => {
+   239→    e.preventDefault()
+   240→
+   241→    // For supplier bills, use billAmount as the entry amount (the regular
+   242→    // "Amount" field is hidden). For everything else, use the amount field.
+   243→    const isSupplierBill = kind === 'EXPENSE' && isSupplierCategory && supplierId
+   244→    const amtStr = isSupplierBill ? billAmount : amount
+   245→    const amt = parseFloat(amtStr)
+   246→    if (!amtStr || isNaN(amt) || amt <= 0) {
+   247→      toast.error(isSupplierBill ? 'Please enter a valid bill amount' : 'Please enter a valid amount')
+   248→      return
+   249→    }
+   250→
+   251→    // Determine category, typeId, supplierId based on kind
+   252→    let finalCategory = ''
+   253→    let finalTypeId: string | null = null
+   254→    let finalSupplierId: string | null = null
+   255→    let finalExpenseCategoryId: string | null = null
+   256→
+   257→    if (kind === 'EXPENSE') {
+   258→      if (!expenseCategoryId) {
+   259→        toast.error('Please select a type')
+   260→        return
+   261→      }
+   262→      finalExpenseCategoryId = expenseCategoryId
+   263→      if (isSupplierCategory) {
+   264→        // Supplier Bill
+   265→        const selectedSupplier = suppliers.find((s) => s.id === supplierId)
+   266→        if (!selectedSupplier) {
+   267→          toast.error('Please select a supplier')
+   268→          return
+   269→        }
+   270→        finalSupplierId = selectedSupplier.id
+   271→        finalCategory = selectedSupplier.name
+   272→      } else if (isDepositCategory) {
+   273→        // Deposit — use deposit types
+   274→        const selectedType = depositTypes.find((t) => t.id === typeId)
+   275→        if (!selectedType) {
+   276→          toast.error('Please select a deposit type')
+   277→          return
+   278→        }
+   279→        finalTypeId = selectedType.id
+   280→        finalCategory = selectedType.name
+   281→      } else {
+   282→        // Regular Expense — expense head
+   283→        const selectedType = types.find((t) => t.id === typeId)
+   284→        if (!selectedType) {
+   285→          toast.error('Please select an expense head')
+   286→          return
+   287→        }
+   288→        finalTypeId = selectedType.id
+   289→        finalCategory = selectedType.name
+   290→      }
+   291→    } else {
+   292→      // Income / Invest — single type dropdown
+   293→      const selectedType = types.find((t) => t.id === typeId)
+   294→      if (!selectedType) {
+   295→        toast.error('Please select a type. Create one in Manage Types if none exist.')
+   296→        return
+   297→      }
+   298→      finalTypeId = selectedType.id
+   299→      finalCategory = selectedType.name
+   300→    }
+   301→
+   302→    setSubmitting(true)
+   303→    try {
+   304→      const res = await fetch('/api/entries', {
+   305→        method: 'POST',
+   306→        headers: { 'Content-Type': 'application/json' },
+   307→        body: JSON.stringify({
+   308→          kind,
+   309→          typeId: finalTypeId,
+   310→          category: finalCategory,
+   311→          amount: amt,
+   312→          note,
+   313→          date,
+   314→          paymentMethod,
+   315→          source,
+   316→          bankAccountId: needsBankAccount ? bankAccountId : undefined,
+   317→          expenseCategoryId: finalExpenseCategoryId || undefined,
+   318→          supplierId: finalSupplierId || undefined,
+   319→        }),
+   320→      })
+   321→      const d = await res.json()
+   322→      if (!res.ok) throw new Error(d?.error || 'Failed to save')
+   323→
+   324→      // If this is a supplier bill, also create a SupplierBill record
+   325→      if (kind === 'EXPENSE' && isSupplierCategory && finalSupplierId) {
+   326→        try {
+   327→          const bAmt = billAmount ? parseFloat(billAmount) : amt
+   328→          const pAmt = paidAmount ? parseFloat(paidAmount) : 0
+   329→          await fetch('/api/supplier-bills', {
+   330→            method: 'POST',
+   331→            headers: { 'Content-Type': 'application/json' },
+   332→            body: JSON.stringify({
+   333→              supplierId: finalSupplierId,
+   334→              billDate: date,
+   335→              billNumber: billNumber.trim() || undefined,
+   336→              billAmount: bAmt,
+   337→              paidAmount: pAmt,
+   338→              note: note.trim() || undefined,
+   339→            }),
+   340→          })
+   341→        } catch {
+   342→          // Bill creation failed — the expense entry itself succeeded,
+   343→          // so just show a warning (non-critical)
+   344→        }
+   345→      }
+   346→
+   347→      toast.success(`${kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} added`)
+   348→      setAmount('')
+   349→      setNote('')
+   350→      setBillNumber('')
+   351→      setBillAmount('')
+   352→      setPaidAmount('')
+   353→      loadEntries()
+   354→    } catch (e) {
+   355→      toast.error(e instanceof Error ? e.message : 'Failed to save')
+   356→    } finally {
+   357→      setSubmitting(false)
+   358→    }
+   359→  }
+   360→
+   361→  const handleDelete = async (id: string) => {
+   362→    const prev = entries
+   363→    setEntries((cur) => cur.filter((e) => e.id !== id))
+   364→    try {
+   365→      const res = await fetch(`/api/entries/${id}`, { method: 'DELETE' })
+   366→      if (!res.ok) throw new Error('Failed')
+   367→      toast.success('Deleted')
+   368→    } catch {
+   369→      setEntries(prev)
+   370→      toast.error('Failed to delete')
+   371→    }
+   372→  }
+   373→
+   374→  // Filter entries by search text (client-side, on the loaded entries)
+   375→  const filteredEntries = useMemo(() => {
+   376→    if (!searchText.trim()) return entries
+   377→    const q = searchText.toLowerCase().trim()
+   378→    return entries.filter(
+   379→      (e) =>
+   380→        e.category.toLowerCase().includes(q) ||
+   381→        (e.note?.toLowerCase().includes(q) ?? false) ||
+   382→        String(e.amount).includes(q) ||
+   383→        e.date.includes(q),
+   384→    )
+   385→  }, [entries, searchText])
+   386→
+   387→  const total = filteredEntries.reduce((s, e) => s + e.amount, 0)
+   388→
+   389→  return (
+   390→    <div className="space-y-6">
+   391→      <div>
+   392→        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   393→          {kind === 'INVEST' ? (
+   394→            <TrendingUp className="h-6 w-6 text-amber-600" />
+   395→          ) : isIncome ? (
+   396→            <ArrowUpCircle className="h-6 w-6 text-emerald-600" />
+   397→          ) : (
+   398→            <ArrowDownCircle className="h-6 w-6 text-rose-600" />
+   399→          )}
+   400→          {title ?? `${isIncome ? 'Income' : 'Expense'} Entry`}
+   401→        </h1>
+   402→        <p className="text-sm text-neutral-500 mt-1">
+   403→          Record a new {kind === 'INVEST' ? 'investment' : isIncome ? 'income' : 'expense'} transaction
+   404→        </p>
+   405→      </div>
+   406→
+   407→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   408→        {/* Form */}
+   409→        <Card>
+   410→          <CardHeader>
+   411→            <CardTitle className="text-base">Add {isIncome ? 'Income' : 'Expense'}</CardTitle>
+   412→          </CardHeader>
+   413→          <CardContent>
+   414→            <form onSubmit={handleSubmit} className="space-y-4">
+   415→              {kind === 'EXPENSE' ? (
+   416→                <>
+   417→                  {/* Two-level dropdown for expenses:
+   418→                      1st dropdown: main expense category (Regular Expense, Supplier Bill, ...)
+   419→                      2nd dropdown: depends on category itemType (TYPE → expense heads, SUPPLIER → suppliers) */}
+   420→                  <div>
+   421→                    <Label className="mb-1.5 block">Type</Label>
+   422→                    <Select value={expenseCategoryId} onValueChange={setExpenseCategoryId}>
+   423→                      <SelectTrigger>
+   424→                        <SelectValue placeholder="Select type" />
+   425→                      </SelectTrigger>
+   426→                      <SelectContent>
+   427→                        {expenseCategories.map((c) => (
+   428→                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+   429→                        ))}
+   430→                      </SelectContent>
+   431→                    </Select>
+   432→                    <p className="text-xs text-neutral-400 mt-1">
+   433→                      New expense categories added in the system automatically appear here.
+   434→                    </p>
+   435→                  </div>
+   436→
+   437→                  {expenseCategoryId && (
+   438→                    <div>
+   439→                      <Label className="mb-1.5 block">
+   440→                        {isSupplierCategory ? 'Supplier' : isDepositCategory ? 'Deposit Type' : 'Expense Head'}
+   441→                      </Label>
+   442→                      {isSupplierCategory ? (
+   443→                        suppliers.length === 0 ? (
+   444→                          <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
+   445→                            <p className="text-xs text-amber-700 dark:text-amber-400">
+   446→                              No suppliers yet. Add suppliers in the Supplier Entry menu.
+   447→                            </p>
+   448→                          </div>
+   449→                        ) : (
+   450→                          <Select value={supplierId} onValueChange={setSupplierId}>
+   451→                            <SelectTrigger>
+   452→                              <SelectValue placeholder="Select supplier" />
+   453→                            </SelectTrigger>
+   454→                            <SelectContent>
+   455→                              {suppliers.map((s) => (
+   456→                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+   457→                              ))}
+   458→                            </SelectContent>
+   459→                          </Select>
+   460→                        )
+   461→                      ) : isDepositCategory ? (
+   462→                        depositTypes.length === 0 ? (
+   463→                          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
+   464→                            <p className="text-xs text-neutral-500">No deposit types yet. Add them in Manage Types (Deposit tab).</p>
+   465→                          </div>
+   466→                        ) : (
+   467→                          <Select value={typeId} onValueChange={setTypeId}>
+   468→                            <SelectTrigger>
+   469→                              <SelectValue placeholder="Select deposit type" />
+   470→                            </SelectTrigger>
+   471→                            <SelectContent>
+   472→                              {depositTypes.map((t) => (
+   473→                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+   474→                              ))}
+   475→                            </SelectContent>
+   476→                          </Select>
+   477→                        )
+   478→                      ) : (
+   479→                        types.length === 0 ? (
+   480→                          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
+   481→                            <p className="text-xs text-neutral-500">No expense heads yet. Add them in Manage Types.</p>
+   482→                          </div>
+   483→                        ) : (
+   484→                          <Select value={typeId} onValueChange={setTypeId}>
+   485→                            <SelectTrigger>
+   486→                              <SelectValue placeholder="Select expense head" />
+   487→                            </SelectTrigger>
+   488→                            <SelectContent>
+   489→                              {types.map((t) => (
+   490→                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+   491→                              ))}
+   492→                            </SelectContent>
+   493→                          </Select>
+   494→                        )
+   495→                      )}
+   496→                    </div>
+   497→                  )}
+   498→
+   499→                  {/* Supplier bill fields — shown when a supplier is selected */}
+   500→                  {isSupplierCategory && supplierId && (
+   501→                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
+   502→                      <div>
+   503→                        <Label className="mb-1.5 block text-xs">Bill Number</Label>
+   504→                        <Input placeholder="e.g. INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+   505→                      </div>
+   506→                      <div>
+   507→                        <Label className="mb-1.5 block text-xs">Bill Amount ({CURRENCY})</Label>
+   508→                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+   509→                      </div>
+   510→                      <div>
+   511→                        <Label className="mb-1.5 block text-xs">Paid Amount ({CURRENCY})</Label>
+   512→                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
+   513→                      </div>
+   514→                      {billAmount && (
+   515→                        <div className="col-span-full text-xs text-neutral-500">
+   516→                          Due Amount: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+   517→                        </div>
+   518→                      )}
+   519→                    </div>
+   520→                  )}
+   521→                </>
+   522→              ) : (
+   523→                /* Single type dropdown for income/invest */
+   524→                <div>
+   525→                  <Label className="mb-1.5 block">Type / Category</Label>
+   526→                  {loadingTypes ? (
+   527→                    <div className="flex items-center gap-2 text-sm text-neutral-500">
+   528→                      <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
+   529→                    </div>
+   530→                  ) : types.length === 0 ? (
+   531→                    <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center">
+   532→                      <Tags className="h-6 w-6 mx-auto text-neutral-400 mb-2" />
+   533→                      <p className="text-sm text-neutral-500 mb-2">No {isIncome ? 'income' : 'expense'} types yet.</p>
+   534→                      <p className="text-xs text-neutral-400">Go to Manage Types to create one.</p>
+   535→                    </div>
+   536→                  ) : (
+   537→                    <Select value={typeId} onValueChange={setTypeId}>
+   538→                      <SelectTrigger>
+   539→                        <SelectValue placeholder="Select type" />
+   540→                      </SelectTrigger>
+   541→                      <SelectContent>
+   542→                        {types.map((t) => (
+   543→                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+   544→                        ))}
+   545→                      </SelectContent>
+   546→                    </Select>
+   547→                  )}
+   548→                </div>
+   549→              )}
+   550→
+   551→              {/* Regular Amount field — hidden when Supplier Bill is selected
+   552→                  (Bill Amount is used instead in that case) */}
+   553→              {!(kind === 'EXPENSE' && isSupplierCategory && supplierId) && (
+   554→                <div>
+   555→                  <Label htmlFor="amount" className="mb-1.5 block">Amount ({CURRENCY})</Label>
+   556→                  <Input
+   557→                    id="amount"
+   558→                    type="number"
+   559→                    step="0.01"
+   560→                    min="0"
+   561→                    placeholder="0.00"
+   562→                    value={amount}
+   563→                    onChange={(e) => setAmount(e.target.value)}
+   564→                    required
+   565→                  />
+   566→                </div>
+   567→              )}
+   568→
+   569→              <div>
+   570→                <Label htmlFor="date" className="mb-1.5 block">Date</Label>
+   571→                <Input
+   572→                  id="date"
+   573→                  type="date"
+   574→                  value={date}
+   575→                  onChange={(e) => setDate(e.target.value)}
+   576→                  required
+   577→                />
+   578→              </div>
+   579→
+   580→              <div>
+   581→                <Label className="mb-1.5 block">{isIncome ? 'Receive Method' : 'Payment Method'}</Label>
+   582→                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+   583→                  <SelectTrigger>
+   584→                    <SelectValue />
+   585→                  </SelectTrigger>
+   586→                  <SelectContent>
+   587→                    {PAYMENT_METHODS.map((m) => (
+   588→                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+   589→                    ))}
+   590→                  </SelectContent>
+   591→                </Select>
+   592→              </div>
+   593→
+   594→              {needsBankAccount && (
+   595→                <div>
+   596→                  <Label className="mb-1.5 block">
+   597→                    {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : paymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
+   598→                  </Label>
+   599→                  {bankAccounts.filter((a) => a.isActive).length === 0 ? (
+   600→                    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
+   601→                      <p className="text-xs text-amber-700 dark:text-amber-400">
+   602→                        No active bank accounts. Please add one in Bank Accounts first.
+   603→                      </p>
+   604→                    </div>
+   605→                  ) : (
+   606→                    <Select value={bankAccountId} onValueChange={setBankAccountId}>
+   607→                      <SelectTrigger>
+   608→                        <SelectValue placeholder={`Select ${paymentMethod === 'MOBILE_BANK' ? 'mobile account' : 'bank account'}`} />
+   609→                      </SelectTrigger>
+   610→                      <SelectContent>
+   611→                        {bankAccounts.filter((a) => a.isActive).map((a) => (
+   612→                          <SelectItem key={a.id} value={a.id}>
+   613→                            {a.bankName} — {a.accountName} ({a.accountNumber})
+   614→                          </SelectItem>
+   615→                        ))}
+   616→                      </SelectContent>
+   617→                    </Select>
+   618→                  )}
+   619→                </div>
+   620→              )}
+   621→
+   622→              <div>
+   623→                <Label htmlFor="note" className="mb-1.5 block">Note (optional)</Label>
+   624→                <Textarea
+   625→                  id="note"
+   626→                  placeholder="e.g. Lunch at office"
+   627→                  value={note}
+   628→                  onChange={(e) => setNote(e.target.value)}
+   629→                  rows={2}
+   630→                />
+   631→              </div>
+   632→
+   633→              <Button
+   634→                type="submit"
+   635→                className="w-full"
+   636→                disabled={submitting || (kind === 'EXPENSE' ? expenseCategories.length === 0 : types.length === 0)}
+   637→                variant={kind === 'INVEST' ? 'default' : isIncome ? 'default' : 'destructive'}
+   638→                style={kind === 'INVEST' ? { backgroundColor: '#d97706' } : undefined}
+   639→              >
+   640→                {submitting ? (
+   641→                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+   642→                ) : (
+   643→                  <><Plus className="h-4 w-4 mr-2" /> Add {kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'}</>
+   644→                )}
+   645→              </Button>
+   646→            </form>
+   647→          </CardContent>
+   648→        </Card>
+   649→
+   650→        {/* List */}
+   651→        <Card>
+   652→          <CardHeader className="pb-3">
+   653→            <div className="flex items-center justify-between">
+   654→              <CardTitle className="text-base">{isIncome ? 'Incomes' : 'Expenses'}</CardTitle>
+   655→              <span className={`text-sm font-semibold ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+   656→                {CURRENCY}{fmt(total)}
+   657→              </span>
+   658→            </div>
+   659→            {/* Date filter + Search */}
+   660→            <div className="flex gap-2 mt-3">
+   661→              <Input
+   662→                type="date"
+   663→                value={filterDate}
+   664→                onChange={(e) => setFilterDate(e.target.value)}
+   665→                className="w-[140px] text-xs"
+   666→                aria-label="Filter by date"
+   667→              />
+   668→              {filterDate && (
+   669→                <Button
+   670→                  variant="ghost"
+   671→                  size="sm"
+   672→                  className="text-xs text-neutral-400 px-2"
+   673→                  onClick={() => setFilterDate('')}
+   674→                >
+   675→                  Clear date
+   676→                </Button>
+   677→              )}
+   678→              <Input
+   679→                type="text"
+   680→                placeholder="Search by category, note, amount..."
+   681→                value={searchText}
+   682→                onChange={(e) => setSearchText(e.target.value)}
+   683→                className="flex-1 text-xs"
+   684→                aria-label="Search entries"
+   685→              />
+   686→            </div>
+   687→          </CardHeader>
+   688→          <CardContent className="p-0">
+   689→            {loadingEntries ? (
+   690→              <div className="py-12 text-center">
+   691→                <Loader2 className="h-5 w-5 animate-spin inline-block text-neutral-400" />
+   692→              </div>
+   693→            ) : filteredEntries.length === 0 ? (
+   694→              <div className="py-12 text-center text-sm text-neutral-500">
+   695→                {entries.length === 0
+   696→                  ? `No ${isIncome ? 'income' : 'expense'} entries${filterDate ? ' for this date' : ''} yet.`
+   697→                  : 'No entries match your search.'}
+   698→              </div>
+   699→            ) : (
+   700→              <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+   701→                {filteredEntries.map((e) => (
+   702→                  <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 group">
+   703→                    <div className="min-w-0 flex-1">
+   704→                      <div className="flex items-center gap-2">
+   705→                        <span className={`text-sm font-semibold tabular-nums ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+   706→                          {isIncome ? '+' : '−'} {CURRENCY}{fmt(e.amount)}
+   707→                        </span>
+   708→                      </div>
+   709→                      <div className="text-xs text-neutral-500 mt-0.5">
+   710→                        <span className="font-medium">{e.category}</span>
+   711→                        <span className="text-neutral-400"> · {e.date}</span>
+   712→                        {e.paymentMethod && e.paymentMethod !== 'CASH' && (
+   713→                          <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+   714→                            {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}
+   715→                            {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
+   716→                          </span>
+   717→                        )}
+   718→                      </div>
+   719→                      {e.note && <div className="text-xs text-neutral-400 mt-0.5 truncate">{e.note}</div>}
+   720→                    </div>
+   721→                    <Button
+   722→                      variant="ghost"
+   723→                      size="icon"
+   724→                      className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
+   725→                      onClick={() => handleDelete(e.id)}
+   726→                      aria-label="Delete"
+   727→                    >
+   728→                      <Trash2 className="h-3.5 w-3.5" />
+   729→                    </Button>
+   730→                  </div>
+   731→                ))}
+   732→              </div>
+   733→            )}
+   734→          </CardContent>
+   735→        </Card>
+   736→      </div>
+   737→    </div>
+   738→  )
+   739→}
+   740→
