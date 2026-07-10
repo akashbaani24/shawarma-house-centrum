@@ -195,35 +195,47 @@ export default function ProfitLossView() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Date panel */}
-      <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 sm:p-4 print:hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-neutral-400" />
-            <div>
-              <div className="text-sm sm:text-base font-semibold">Profit &amp; Loss Report</div>
-              <div className="text-xs text-neutral-500">{formatLongDate(from)} — {formatLongDate(to)}</div>
+    <div className="space-y-3">
+      {/* Date panel — compact, mobile-first */}
+      <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-2.5 sm:p-3 print:hidden">
+        {/* Row 1: title + quick nav */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <DollarSign className="h-4 w-4 text-neutral-400 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate">Profit &amp; Loss Report</div>
+              <div className="text-[11px] text-neutral-500 tabular-nums truncate">{formatLongDate(from)} — {formatLongDate(to)}</div>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevMonth} aria-label="Previous month">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 px-2.5" onClick={handleThisMonth}>This Month</Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextMonth} aria-label="Next month">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        {/* Row 2: dates + actions */}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex items-end gap-2">
             <div>
-              <Label className="text-xs text-neutral-500">From</Label>
-              <Input type="date" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} className="w-[130px]" />
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
+              <Input type="date" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} className="w-[130px] h-8 text-xs" />
             </div>
             <div>
-              <Label className="text-xs text-neutral-500">To</Label>
-              <Input type="date" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} className="w-[130px]" />
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
+              <Input type="date" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} className="w-[130px] h-8 text-xs" />
             </div>
-            <Button variant="outline" size="sm" onClick={handleThisMonth}>This Month</Button>
-            <Button variant="outline" size="sm" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-1" /> Print
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+            <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
             {report && (
               <>
-                <Button variant="outline" size="sm" onClick={() => {
+                <Button variant="outline" size="sm" className="h-8" onClick={() => {
                   import('@/lib/export-utils').then(({ exportToExcel }) => exportToExcel({
                     businessName: report.businessName,
                     reportTitle: 'Profit & Loss Statement',
@@ -232,9 +244,9 @@ export default function ProfitLossView() {
                     rows: buildExportRows(),
                   }))
                 }}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Excel
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
+                <Button variant="outline" size="sm" className="h-8" onClick={() => {
                   import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName,
                     reportTitle: 'Profit & Loss Statement',
@@ -243,7 +255,7 @@ export default function ProfitLossView() {
                     rows: buildExportRows(),
                   }))
                 }}>
-                  <FileText className="h-4 w-4 mr-1" /> PDF
+                  <FileText className="h-3.5 w-3.5 mr-1" /> PDF
                 </Button>
               </>
             )}
@@ -257,64 +269,60 @@ export default function ProfitLossView() {
         </div>
       ) : (
         <>
-          {/* Summary cards (screen only) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
-            <Card className="border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/30 dark:border-emerald-900">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Total Revenue</CardTitle>
-                <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{CURRENCY}{fmt(report.totalRevenue)}</div>
-                <p className="text-xs text-neutral-500 mt-1">{report.incomeCount} transactions</p>
-              </CardContent>
-            </Card>
-            <Card className="border-rose-200 bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-900">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-rose-700 dark:text-rose-400">Total Expenses</CardTitle>
-                <ArrowDownCircle className="h-4 w-4 text-rose-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-rose-700 dark:text-rose-400">{CURRENCY}{fmt(report.totalCogs + report.totalOperating + report.totalOtherLosses)}</div>
-                <p className="text-xs text-neutral-500 mt-1">{report.expenseCount} transactions</p>
-              </CardContent>
-            </Card>
-            <Card className={isOpProfit
-              ? 'border-sky-200 bg-sky-50/60 dark:bg-sky-950/30 dark:border-sky-900'
-              : 'border-amber-200 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-900'}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className={`text-xs font-medium ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
+          {/* Summary cards — compact (screen only) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden">
+            <div className="border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-md px-3 py-2">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">Total Revenue</span>
+                <ArrowUpCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              </div>
+              <div className="text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{CURRENCY}{fmt(report.totalRevenue)}</div>
+              <p className="text-[10px] text-neutral-500">{report.incomeCount} txns</p>
+            </div>
+            <div className="border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/30 rounded-md px-3 py-2">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] font-medium text-rose-700 dark:text-rose-400">Total Expenses</span>
+                <ArrowDownCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+              </div>
+              <div className="text-base font-bold text-rose-700 dark:text-rose-400 tabular-nums">{CURRENCY}{fmt(report.totalCogs + report.totalOperating + report.totalOtherLosses)}</div>
+              <p className="text-[10px] text-neutral-500">{report.expenseCount} txns</p>
+            </div>
+            <div className={`border rounded-md px-3 py-2 ${
+              isOpProfit
+                ? 'border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/30'
+                : 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30'
+            }`}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className={`text-[11px] font-medium ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
                   Operating {isOpProfit ? 'Profit' : 'Loss'}
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-neutral-400" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-xl font-bold ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  {CURRENCY}{fmt(Math.abs(report.operatingProfit))}
-                </div>
-                <p className="text-xs text-neutral-500 mt-1">After operating expenses</p>
-              </CardContent>
-            </Card>
-            <Card className={isProfit
-              ? 'border-emerald-300 bg-emerald-100/60 dark:bg-emerald-950/40 dark:border-emerald-800'
-              : 'border-rose-300 bg-rose-100/60 dark:bg-rose-950/40 dark:border-rose-800'}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className={`text-xs font-medium ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                </span>
+                <DollarSign className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+              </div>
+              <div className={`text-base font-bold tabular-nums ${isOpProfit ? 'text-sky-700 dark:text-sky-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                {CURRENCY}{fmt(Math.abs(report.operatingProfit))}
+              </div>
+              <p className="text-[10px] text-neutral-500">After operating exp</p>
+            </div>
+            <div className={`border rounded-md px-3 py-2 ${
+              isProfit
+                ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-100/60 dark:bg-emerald-950/40'
+                : 'border-rose-300 dark:border-rose-800 bg-rose-100/60 dark:bg-rose-950/40'
+            }`}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className={`text-[11px] font-medium ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                   {isProfit ? 'Net Profit' : 'Net Loss'}
-                </CardTitle>
-                <TrendingUp className={`h-4 w-4 ${isProfit ? 'text-emerald-600' : 'text-rose-600'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-xl font-bold ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                  {CURRENCY}{fmt(Math.abs(report.netProfit))}
-                </div>
-                <p className="text-xs text-neutral-500 mt-1">After all losses</p>
-              </CardContent>
-            </Card>
+                </span>
+                <TrendingUp className={`h-3.5 w-3.5 shrink-0 ${isProfit ? 'text-emerald-600' : 'text-rose-600'}`} />
+              </div>
+              <div className={`text-base font-bold tabular-nums ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                {CURRENCY}{fmt(Math.abs(report.netProfit))}
+              </div>
+              <p className="text-[10px] text-neutral-500">After all losses</p>
+            </div>
           </div>
 
-          {/* ===== Statement sheet ===== */}
-          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-4 sm:p-8 print:border-black print:p-4 shadow-sm max-w-3xl mx-auto">
+          {/* ===== Statement sheet — wider ===== */}
+          <div className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-sm p-3 sm:p-5 print:border-black print:p-4 shadow-sm w-full">
             {/* Header — centered */}
             <div className="text-center pb-3 mb-4 border-b-2 border-neutral-800 dark:border-neutral-200 print:border-black">
               <div className="flex items-center justify-center gap-3 mb-1">
