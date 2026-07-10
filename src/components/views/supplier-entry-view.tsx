@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Truck, Plus, Trash2, Loader2, Pencil, Phone, MapPin, Receipt } from 'lucide-react'
+import { Truck, Plus, Trash2, Loader2, Pencil, Phone, MapPin, Receipt, GitMerge } from 'lucide-react'
 import { toast } from 'sonner'
 
 const CURRENCY = '৳'
@@ -99,6 +100,68 @@ export default function SupplierEntryView() {
   const [editPaidAmount, setEditPaidAmount] = useState('')
   const [editBillNote, setEditBillNote] = useState('')
   const [editBillSubmitting, setEditBillSubmitting] = useState(false)
+
+  // === Supplier merge state (admin only) ===
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'ADMIN'
+  const [mergeSource, setMergeSource] = useState<SupplierItem | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState<string>('')
+  const [mergeSubmitting, setMergeSubmitting] = useState(false)
+
+  const openMergeDialog = (s: SupplierItem) => {
+    setMergeSource(s)
+    // Pre-select the first OTHER supplier as default target
+    const firstOther = suppliers.find((x) => x.id !== s.id)
+    setMergeTargetId(firstOther?.id || '')
+  }
+
+  const handleMergeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!mergeSource || !mergeTargetId) return
+    if (mergeSource.id === mergeTargetId) {
+      toast.error('Source and target supplier must be different')
+      return
+    }
+    const target = suppliers.find((x) => x.id === mergeTargetId)
+    if (!target) {
+      toast.error('Target supplier not found')
+      return
+    }
+    if (!confirm(
+      `Merge "${mergeSource.name}" INTO "${target.name}"?\n\n` +
+      `This will:\n` +
+      `  • Move ALL entries (expense + bills) from "${mergeSource.name}" to "${target.name}"\n` +
+      `  • Rewrite Entry.category from "${mergeSource.name}" to "${target.name}"\n` +
+      `  • DELETE "${mergeSource.name}" supplier record\n` +
+      `  • Amounts, dates, notes, payment methods — ALL PRESERVED\n\n` +
+      `This action CANNOT be undone. Continue?`
+    )) return
+    setMergeSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/merge-supplier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceId: mergeSource.id,
+          targetId: mergeTargetId,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d?.error || 'Failed to merge')
+      toast.success(
+        `Merged successfully. ` +
+        `${d.result.entriesRepointed} entries + ${d.result.billsRepointed} bills moved to "${target.name}".`
+      )
+      setMergeSource(null)
+      setMergeTargetId('')
+      load()
+      loadBills()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to merge')
+    } finally {
+      setMergeSubmitting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -403,6 +466,19 @@ export default function SupplierEntryView() {
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-60 hover:opacity-100" onClick={() => openEditDialog(s)} aria-label="Edit">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-neutral-400 hover:text-violet-600 opacity-60 hover:opacity-100"
+                                onClick={() => openMergeDialog(s)}
+                                aria-label="Merge into another supplier"
+                                title="Merge into another supplier"
+                                disabled={suppliers.length < 2}
+                              >
+                                <GitMerge className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100" onClick={() => handleDeleteSupplier(s)} aria-label="Delete">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -621,6 +697,62 @@ export default function SupplierEntryView() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingBill(null)}>Cancel</Button>
               <Button type="submit" className="flex-1" disabled={editBillSubmitting}>
                 {editBillSubmitting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>) : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Merge Supplier Dialog (admin only) === */}
+      <Dialog open={!!mergeSource} onOpenChange={(open) => !open && setMergeSource(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitMerge className="h-4 w-4 text-violet-600" />
+              Merge Supplier
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleMergeSubmit} className="space-y-4">
+            <div className="rounded-lg border border-violet-200 dark:border-violet-900 bg-violet-50/60 dark:bg-violet-950/20 p-3 space-y-2">
+              <div className="text-xs text-neutral-500">Source (will be deleted):</div>
+              <div className="text-sm font-semibold text-violet-700 dark:text-violet-400">
+                {mergeSource?.name}
+              </div>
+            </div>
+            <div className="text-center text-neutral-400 text-xs">↓ all entries &amp; bills move to ↓</div>
+            <div>
+              <Label className="mb-1.5 block">Target supplier (kept):</Label>
+              <Select value={mergeTargetId} onValueChange={setMergeTargetId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select target supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.filter((s) => s.id !== mergeSource?.id).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 text-[11px] text-neutral-500 space-y-1">
+              <p className="font-medium text-neutral-700 dark:text-neutral-300">What happens:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>All entries &amp; bills from "{mergeSource?.name}" move to the target supplier</li>
+                <li>Entry.category renamed from "{mergeSource?.name}" to target name</li>
+                <li>Amounts, dates, notes, payment methods — all preserved</li>
+                <li>"{mergeSource?.name}" supplier record will be deleted</li>
+              </ul>
+              <p className="text-rose-600 font-medium mt-1.5">⚠ This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setMergeSource(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" className="flex-1" disabled={mergeSubmitting || !mergeTargetId}>
+                {mergeSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Merging...</>
+                ) : (
+                  <><GitMerge className="h-4 w-4 mr-2" /> Merge &amp; Delete Source</>
+                )}
               </Button>
             </div>
           </form>
