@@ -117,8 +117,8 @@ export default function ExpenseComparisonView() {
 
   const exportColumns = [
     { header: 'Head', key: 'h' },
-    { header: 'Last Period', key: 'l' },
-    { header: 'This Period', key: 't' },
+    { header: 'Previous Range', key: 'l' },
+    { header: 'Selected Range', key: 't' },
     { header: 'Difference', key: 'd' },
     { header: 'Change %', key: 'p' },
   ]
@@ -157,7 +157,7 @@ export default function ExpenseComparisonView() {
             <BarChart3 className="h-4 w-4 text-neutral-400 shrink-0" />
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">Expense Comparison Report</div>
-              <div className="text-[11px] text-neutral-500 truncate">Last Period vs This Period</div>
+              <div className="text-[11px] text-neutral-500 truncate">Selected range vs previous equivalent range</div>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -166,34 +166,14 @@ export default function ExpenseComparisonView() {
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext} aria-label="Shift both periods forward by 1 month"><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          {/* Last Period */}
-          <div className="rounded-md border border-sky-200 dark:border-sky-900 bg-sky-50/40 dark:bg-sky-950/20 p-2">
-            <div className="text-[10px] font-medium text-sky-700 dark:text-sky-400 mb-1">Last Period</div>
-            <div className="flex items-end gap-1.5">
-              <div>
-                <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
-                <Input type="date" value={lastFrom} onChange={(e) => e.target.value && setLastFrom(e.target.value)} className="w-[130px] h-8 text-xs" />
-              </div>
-              <div>
-                <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
-                <Input type="date" value={lastTo} onChange={(e) => e.target.value && setLastTo(e.target.value)} className="w-[130px] h-8 text-xs" />
-              </div>
-            </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
+            <Input type="date" value={lastFrom} onChange={(e) => e.target.value && setLastFrom(e.target.value)} className="w-[130px] h-8 text-xs" />
           </div>
-          {/* This Period */}
-          <div className="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 p-2">
-            <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-1">This Period</div>
-            <div className="flex items-end gap-1.5">
-              <div>
-                <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
-                <Input type="date" value={thisFrom} onChange={(e) => e.target.value && setThisFrom(e.target.value)} className="w-[130px] h-8 text-xs" />
-              </div>
-              <div>
-                <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
-                <Input type="date" value={thisTo} onChange={(e) => e.target.value && setThisTo(e.target.value)} className="w-[130px] h-8 text-xs" />
-              </div>
-            </div>
+          <div>
+            <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
+            <Input type="date" value={lastTo} onChange={(e) => e.target.value && setLastTo(e.target.value)} className="w-[130px] h-8 text-xs" />
           </div>
           <div className="flex items-center gap-1.5 ml-auto flex-wrap">
             <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}><Printer className="h-3.5 w-3.5 mr-1" /> Print</Button>
@@ -235,12 +215,12 @@ export default function ExpenseComparisonView() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden">
             <div className="border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/30 rounded-md px-3 py-2">
-              <div className="text-[11px] font-medium text-sky-700 dark:text-sky-400">Last Period</div>
+              <div className="text-[11px] font-medium text-sky-700 dark:text-sky-400">Previous Range</div>
               <div className="text-[10px] text-neutral-500 tabular-nums">{lastPeriodLabel}</div>
               <div className="text-base font-bold text-sky-700 dark:text-sky-400 tabular-nums mt-0.5">{CURRENCY}{fmt(report.totals.lastPeriod)}</div>
             </div>
             <div className="border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-md px-3 py-2">
-              <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">This Period</div>
+              <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">Selected Range</div>
               <div className="text-[10px] text-neutral-500 tabular-nums">{thisPeriodLabel}</div>
               <div className="text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums mt-0.5">{CURRENCY}{fmt(report.totals.thisPeriod)}</div>
             </div>
@@ -248,14 +228,14 @@ export default function ExpenseComparisonView() {
               <div className={`text-[11px] font-medium ${report.totals.difference > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                 Difference {report.totals.difference > 0 ? <ArrowUp className="inline h-3 w-3" /> : <ArrowDown className="inline h-3 w-3" />}
               </div>
-              <div className="text-[10px] text-neutral-500">This − Last</div>
+              <div className="text-[10px] text-neutral-500">Selected − Previous</div>
               <div className={`text-base font-bold tabular-nums mt-0.5 ${report.totals.difference > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                 {fmtSigned(report.totals.difference)}
               </div>
             </div>
             <div className="border border-neutral-200 dark:border-neutral-800 rounded-md px-3 py-2">
               <div className="text-[11px] font-medium text-neutral-500">Change %</div>
-              <div className="text-[10px] text-neutral-500">vs Last Period</div>
+              <div className="text-[10px] text-neutral-500">vs Previous Range</div>
               <div className={`text-base font-bold tabular-nums mt-0.5 ${report.totals.changePct === null ? 'text-neutral-500' : report.totals.changePct > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                 {fmtPct(report.totals.changePct)}
               </div>
@@ -270,7 +250,7 @@ export default function ExpenseComparisonView() {
                 <div className="text-lg sm:text-xl font-bold tracking-tight uppercase">{report.businessName}</div>
               </div>
               <div className="text-sm font-semibold uppercase tracking-wide">Expense Comparison Report</div>
-              <div className="text-xs text-neutral-500 mt-0.5 tabular-nums">This: {thisPeriodLabel} · vs · Last: {lastPeriodLabel}</div>
+              <div className="text-xs text-neutral-500 mt-0.5 tabular-nums">Selected: {thisPeriodLabel} · vs · Previous: {lastPeriodLabel}</div>
             </div>
 
             {filteredHeads.length === 0 ? (
@@ -286,8 +266,8 @@ export default function ExpenseComparisonView() {
                     <TableHeader>
                       <TableRow className="bg-neutral-50 dark:bg-neutral-900">
                         <TableHead className="h-7 px-2 text-[11px] font-semibold">Head</TableHead>
-                        <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-32">Last Period</TableHead>
-                        <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-32">This Period</TableHead>
+                        <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-32">Previous Range</TableHead>
+                        <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-32">Selected Range</TableHead>
                         <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-32">Difference</TableHead>
                         <TableHead className="h-7 px-2 text-[11px] font-semibold text-right w-20">Change %</TableHead>
                       </TableRow>
@@ -330,8 +310,8 @@ export default function ExpenseComparisonView() {
                     <thead>
                       <tr className="bg-gray-200 border-b border-black">
                         <th className="py-1 px-2 text-[11px] font-semibold text-left" style={{ width: '36%' }}>Head</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>Last Period</th>
-                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>This Period</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>Previous Range</th>
+                        <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>Selected Range</th>
                         <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>Difference</th>
                         <th className="py-1 px-2 text-[11px] font-semibold text-right" style={{ width: '16%' }}>Change %</th>
                       </tr>
