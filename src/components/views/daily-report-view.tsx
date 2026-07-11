@@ -272,21 +272,46 @@ export default function DailyReportView() {
                     <FileSpreadsheet className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Excel</span>
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => {
-                    const allEntries = [
-                      ...report.incomeEntries.map((e) => ['Income', e.category, fmt(e.amount)] as (string|number)[]),
-                      ...(report.excessEntries || []).map((e) => ['Excess', e.category, fmt(e.amount)] as (string|number)[]),
-                      ...report.expensesEntries.map((e) => ['Expense', e.category, fmt(e.amount)] as (string|number)[]),
-                      ...report.paymentsEntries.map((e) => ['Payment', e.category, fmt(e.amount)] as (string|number)[]),
-                      ...report.depositsEntries.map((e) => ['Deposit', e.category, fmt(e.amount)] as (string|number)[]),
-                      ...(report.shortageEntries || []).map((e) => ['Shortage', e.category, fmt(e.amount)] as (string|number)[]),
-                    ]
-                    import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                    if (!report) return
+                    // Build denomination list from validDenoms + denomCounts
+                    const denoms = report.validDenoms.map((d) => {
+                      const raw = denomCounts[d] ?? ''
+                      const n = parseInt(raw, 10)
+                      return { denom: d, count: isNaN(n) || n < 0 ? 0 : n }
+                    })
+                    // Build opening label
+                    const openingLabel = report.openingSource === 'explicit'
+                      ? 'Opening Balance (set explicitly)'
+                      : report.openingSource === 'carryover'
+                      ? `Carried from ${report.openingSourceDate}`
+                      : 'Opening Balance'
+                    import('@/lib/export-utils').then(({ exportDailyReportToPDF }) => exportDailyReportToPDF({
                       businessName: report.businessName,
-                      reportTitle: 'Branch Daily Report',
-                      dateRange: `Date: ${dateDisplay}`,
-                      columns: [{ header: 'Type', key: 'type' }, { header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],
-                      rows: allEntries,
-                      totalsRow: ['Total', '', fmt(report.totalIncome + (report.totalExcess || 0) - report.totalExpense)],
+                      dateDisplay,
+                      logoUrl: report.logoUrl,
+                      openingBalance: report.openingBalance,
+                      openingLabel,
+                      incomeEntries: report.incomeEntries,
+                      totalIncome: report.totalIncome,
+                      excessEntries: report.excessEntries || [],
+                      totalExcess: report.totalExcess || 0,
+                      denoms,
+                      totalCashInHand: liveDenomTotal,
+                      denomNotEntered: report.denomNotEntered,
+                      expenseEntries: report.expensesEntries,
+                      totalExpenses: report.totalExpenses,
+                      paymentEntries: report.paymentsEntries,
+                      totalPayments: report.totalPayments,
+                      depositEntries: report.depositsEntries,
+                      totalDeposits: report.totalDeposits,
+                      shortageEntries: report.shortageEntries || [],
+                      totalShortage: report.totalShortage || 0,
+                      calculatedClosing: report.calculatedClosing,
+                      incomeSideTotal: liveLeftTotal,
+                      expenseSideTotal: liveRightTotal,
+                      isBalanced: liveIsBalanced,
+                      balanceDifference: liveDifference,
+                      preparedBy: report.preparedBy.length > 0 ? report.preparedBy.join(', ') : report.currentUser,
                     }))
                   }}>
                     <FileText className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">PDF</span>
