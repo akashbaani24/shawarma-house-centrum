@@ -274,8 +274,9 @@ export default function IncomeReportView() {
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
-                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                  import('@/lib/export-utils').then(async ({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName,
+                    logoUrl: report.logoUrl,
                     reportTitle: 'Income Report',
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: exportColumns,

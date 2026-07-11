@@ -247,8 +247,9 @@ export default function ProfitLossView() {
                   <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Excel
                 </Button>
                 <Button variant="outline" size="sm" className="h-8" onClick={() => {
-                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                  import('@/lib/export-utils').then(async ({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName,
+                    logoUrl: report.logoUrl,
                     reportTitle: 'Profit & Loss Statement',
                     dateRange: `${fromDateDisplay} to ${toDateDisplay}`,
                     columns: [{ header: 'Particulars', key: 'particulars' }, { header: 'Amount', key: 'amount' }],

@@ -168,8 +168,9 @@ export default function DepositReportView() {
                   }))
                 }}><FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Excel</Button>
                 <Button variant="outline" size="sm" className="h-8" onClick={() => {
-                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                  import('@/lib/export-utils').then(async ({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName, reportTitle: 'Deposit Report',
+                    logoUrl: report.logoUrl,
                     dateRange: `${fromDateDisplay} to ${toDateDisplay}`, columns: exportColumns, rows: buildExportRows(),
                   }))
                 }}><FileText className="h-3.5 w-3.5 mr-1" /> PDF</Button>

@@ -179,8 +179,9 @@ export default function InvestmentReportView() {
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
-                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                  import('@/lib/export-utils').then(async ({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName,
+                    logoUrl: report.logoUrl,
                     reportTitle: 'Investment Report',
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: [{ header: 'Date', key: 'date' }, { header: 'Category', key: 'category' }, { header: 'Method', key: 'method' }, { header: 'Account Name', key: 'acctName' }, { header: 'Account Number', key: 'acctNum' }, { header: 'Note', key: 'note' }, { header: 'Amount', key: 'amount' }],

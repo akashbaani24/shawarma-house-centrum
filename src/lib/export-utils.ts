@@ -16,6 +16,7 @@ interface ExportData {
   columns: ExportColumn[]
   rows: (string | number)[][]
   totalsRow?: (string | number)[]
+  logoUrl?: string | null  // optional — embedded in PDF header if present
 }
 
 function fmt(n: number): string {
@@ -68,14 +69,37 @@ export function exportToExcel(data: ExportData) {
   XLSX.writeFile(wb, filename)
 }
 
-export function exportToPDF(data: ExportData) {
+export async function exportToPDF(data: ExportData) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
 
-  // Title
+  // === Logo (optional) ===
+  // jsPDF can't embed a remote image URL directly (CORS) — we fetch it
+  // first, convert to base64, then add it. If fetch fails, skip silently.
+  const logoSize = 14  // mm — square
+  let logoLoaded = false
+  if (data.logoUrl) {
+    const img = await fetchImageAsDataUrl(data.logoUrl)
+    if (img) {
+      try {
+        doc.addImage(img.dataUrl, img.format, 10, 6, logoSize, logoSize, undefined, 'FAST')
+        logoLoaded = true
+      } catch {
+        logoLoaded = false
+      }
+    }
+  }
+
+  // === Title block ===
+  // If logo is loaded, shift the business name right so it doesn't overlap.
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(data.businessName, pageWidth / 2, 15, { align: 'center' })
+  if (logoLoaded) {
+    const textX = (10 + logoSize + 4 + pageWidth - 10) / 2
+    doc.text(data.businessName, textX, 14, { align: 'center' })
+  } else {
+    doc.text(data.businessName, pageWidth / 2, 15, { align: 'center' })
+  }
 
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
@@ -211,7 +235,37 @@ function methodLabel(m?: string): string {
   return m
 }
 
-export function exportDailyReportToPDF(data: DailyReportPdfData) {
+// Fetch an image URL and convert it to a base64 data URL.
+// jsPDF's addImage() needs the actual pixel data — passing a remote URL
+// directly fails silently because of CORS + the way jsPDF reads pixels.
+// We fetch the image as a blob, read it via FileReader, and return a
+// data URL that jsPDF can embed.
+//
+// Returns null if the fetch fails for any reason (CORS, network, etc.)
+// so the caller can gracefully skip the logo and still produce the PDF.
+async function fetchImageAsDataUrl(url: string): Promise<{ dataUrl: string; format: 'PNG' | 'JPEG' | 'WEBP' } | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    if (!blob.type.startsWith('image/')) return null
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error('FileReader failed'))
+      reader.readAsDataURL(blob)
+    })
+    // Detect format from blob.type
+    let format: 'PNG' | 'JPEG' | 'WEBP' = 'PNG'
+    if (blob.type.includes('jpeg') || blob.type.includes('jpg')) format = 'JPEG'
+    else if (blob.type.includes('webp')) format = 'WEBP'
+    return { dataUrl, format }
+  } catch {
+    return null
+  }
+}
+
+export async function exportDailyReportToPDF(data: DailyReportPdfData) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()  // 210
   const pageHeight = doc.internal.pageSize.getHeight() // 297
@@ -223,12 +277,39 @@ export function exportDailyReportToPDF(data: DailyReportPdfData) {
   let y = margin
 
   // === Header ===
+  // Try to load the logo as base64 (jsPDF can't embed a remote URL directly
+  // because of CORS — we fetch it first, then add it as an image).
+  // If the logo fails to load (CORS, network, etc.), we skip it and just
+  // show the business name centered.
+  const logoSize = 14  // mm — square logo box
+  let logoLoaded = false
+  if (data.logoUrl) {
+    const img = await fetchImageAsDataUrl(data.logoUrl)
+    if (img) {
+      try {
+        // Place logo at top-left, vertically centered with the business name
+        doc.addImage(img.dataUrl, img.format, margin, y, logoSize, logoSize, undefined, 'FAST')
+        logoLoaded = true
+      } catch {
+        // addImage can throw if the image format is unsupported — skip silently
+        logoLoaded = false
+      }
+    }
+  }
+
+  // Business name — centered, but shifted right if logo is on the left
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(data.businessName, pageWidth / 2, y + 4, { align: 'center' })
+  if (logoLoaded) {
+    // Center between the logo's right edge and the page's right margin
+    const textX = (margin + logoSize + 2 + pageWidth - margin) / 2
+    doc.text(data.businessName, textX, y + 6, { align: 'center' })
+  } else {
+    doc.text(data.businessName, pageWidth / 2, y + 6, { align: 'center' })
+  }
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  y += 8
+  y += 10
   doc.text('Branch Daily Report', pageWidth / 2, y, { align: 'center' })
   y += 4
   doc.setFontSize(9)

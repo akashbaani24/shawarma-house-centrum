@@ -285,7 +285,7 @@ export default function DailyReportView() {
                       : report.openingSource === 'carryover'
                       ? `Carried from ${report.openingSourceDate}`
                       : 'Opening Balance'
-                    import('@/lib/export-utils').then(({ exportDailyReportToPDF }) => exportDailyReportToPDF({
+                    import('@/lib/export-utils').then(async ({ exportDailyReportToPDF }) => exportDailyReportToPDF({
                       businessName: report.businessName,
                       dateDisplay,
                       logoUrl: report.logoUrl,

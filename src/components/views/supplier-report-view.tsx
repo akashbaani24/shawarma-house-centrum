@@ -190,8 +190,9 @@ export default function SupplierReportView() {
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => {
-                  import('@/lib/export-utils').then(({ exportToPDF }) => exportToPDF({
+                  import('@/lib/export-utils').then(async ({ exportToPDF }) => exportToPDF({
                     businessName: report.businessName,
+                    logoUrl: report.logoUrl,
                     reportTitle: 'Supplier Report',
                     dateRange: `${fromDateDisplay} — ${toDateDisplay}`,
                     columns: [{ header: 'Bill Date', key: 'billDate' }, { header: 'Supplier Name', key: 'supplier' }, { header: 'Bill Number', key: 'billNumber' }, { header: 'Bill Amount', key: 'billAmount' }, { header: 'Paid Amount', key: 'paidAmount' }, { header: 'Due Amount', key: 'dueAmount' }],
