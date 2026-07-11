@@ -20,9 +20,10 @@ export const metadata: Metadata = {
   description: "Branch Daily Report — track receipts, payments, sales and deposits.",
   keywords: ["daily report", "cash", "expense", "income", "tracker", "Shawarma House", "branch report"],
   authors: [{ name: "Shawarma House" }],
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
+  // Favicon is served dynamically by /app/icon/route.ts so it always
+  // matches the business logo stored in the database. When an admin
+  // updates the logo via Settings, the favicon updates automatically
+  // (after the 1-hour cache expires).
 };
 
 export default function RootLayout({
