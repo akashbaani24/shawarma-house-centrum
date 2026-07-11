@@ -3,19 +3,20 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { libsql } from '@/lib/db'
 
-// GET /api/expense-comparison?month=YYYY-MM
-// Returns per-expense-head comparison: Last Month vs This Month.
-// `month` is the "this month" — last month is automatically derived.
+// GET /api/expense-comparison?lastFrom=&lastTo=&thisFrom=&thisTo=
 //
-// Response shape:
-//   thisMonth: { from, to }
-//   lastMonth: { from, to }
-//   heads: [{ head, lastMonth, thisMonth, difference, changePct }]
-//   totals: { lastMonth, thisMonth, difference, changePct }
+// Compares expenses across TWO custom date ranges:
+//   - "Last Period"  = lastFrom .. lastTo
+//   - "This Period"  = thisFrom .. thisTo
 //
-// "Head" = Entry.category for EXPENSE entries (excludes deposits +
-// excludes supplier bills' supplier-name entries — we want to compare
-// the actual expense HEADS like Salary, Rent, etc.)
+// Returns per-expense-head:
+//   { head, lastPeriod, thisPeriod, difference, changePct }
+//
+// The user can pick ANY two date ranges — they don't have to be the same
+// length, and they don't have to be consecutive months. This is more
+// flexible than the old `?month=` parameter.
+//
+// Excludes deposits + cash shortage from the comparison (same as before).
 function isDeposit(cat: string): boolean {
   const n = (cat || '').toLowerCase().replace(/[^a-z0-9]/g, '')
   return n.includes('deposit') || n.includes('bankaccount') || n.includes('cardsale') || n.includes('digitalwallet') || n.includes('bkashno') || n.includes('bkashmobile')
@@ -25,6 +26,11 @@ function isShortage(cat: string): boolean {
   return n.includes('shortage')
 }
 
+function isValidDate(s: string | null): s is string {
+  if (!s) return false
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -32,64 +38,59 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url)
-  // 'month' is YYYY-MM. Default = current month.
-  const now = new Date()
-  const monthParam = searchParams.get('month') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const m = /^(\d{4})-(\d{2})$/.exec(monthParam)
-  if (!m) {
-    return NextResponse.json({ error: 'Invalid month format (use YYYY-MM)' }, { status: 400 })
+  const lastFrom = searchParams.get('lastFrom')
+  const lastTo = searchParams.get('lastTo')
+  const thisFrom = searchParams.get('thisFrom')
+  const thisTo = searchParams.get('thisTo')
+
+  if (!isValidDate(lastFrom) || !isValidDate(lastTo) || !isValidDate(thisFrom) || !isValidDate(thisTo)) {
+    return NextResponse.json({ error: 'All four dates are required (YYYY-MM-DD): lastFrom, lastTo, thisFrom, thisTo' }, { status: 400 })
   }
-  const y = parseInt(m[1], 10)
-  const mo = parseInt(m[2], 10) // 1-12
-
-  // Compute "this month" range
-  const thisFrom = `${y}-${String(mo).padStart(2, '0')}-01`
-  const thisTo = `${y}-${String(mo).padStart(2, '0')}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}`
-
-  // Compute "last month" range
-  const lastDate = new Date(y, mo - 1, 1) // first day of this month
-  lastDate.setMonth(lastDate.getMonth() - 1) // first day of last month
-  const ly = lastDate.getFullYear()
-  const lm = lastDate.getMonth() + 1
-  const lastFrom = `${ly}-${String(lm).padStart(2, '0')}-01`
-  const lastTo = `${ly}-${String(lm).padStart(2, '0')}-${String(new Date(ly, lm, 0).getDate()).padStart(2, '0')}`
+  if (lastFrom > lastTo) {
+    return NextResponse.json({ error: 'lastFrom must be before or equal to lastTo' }, { status: 400 })
+  }
+  if (thisFrom > thisTo) {
+    return NextResponse.json({ error: 'thisFrom must be before or equal to thisTo' }, { status: 400 })
+  }
 
   try {
-    // Pull both months' expense entries in a single query (filter at app layer
-    // by date range to keep things simple)
+    // Pull expenses across the union of both periods in a single query
+    const unionFrom = lastFrom < thisFrom ? lastFrom : thisFrom
+    const unionTo = lastTo > thisTo ? lastTo : thisTo
+
     const res = await libsql.execute({
       sql: `SELECT e.category, e.amount, e.date
             FROM "Entry" e
             WHERE e.kind = ?
               AND e.date >= ? AND e.date <= ?`,
-      args: ['EXPENSE', lastFrom, thisTo],
+      args: ['EXPENSE', unionFrom, unionTo],
     })
     const rows = res.rows as { category: string; amount: number; date: string }[]
 
     // Filter out deposits + shortage — they are not "expense heads"
     const filtered = rows.filter((r) => !isDeposit(r.category) && !isShortage(r.category))
 
-    // Build head → { lastMonth, thisMonth }
-    const headMap = new Map<string, { lastMonth: number; thisMonth: number }>()
+    // Build head → { lastPeriod, thisPeriod }
+    const headMap = new Map<string, { lastPeriod: number; thisPeriod: number }>()
     for (const r of filtered) {
-      if (!headMap.has(r.category)) headMap.set(r.category, { lastMonth: 0, thisMonth: 0 })
+      if (!headMap.has(r.category)) headMap.set(r.category, { lastPeriod: 0, thisPeriod: 0 })
       const e = headMap.get(r.category)!
-      if (r.date >= lastFrom && r.date <= lastTo) e.lastMonth += r.amount
-      if (r.date >= thisFrom && r.date <= thisTo) e.thisMonth += r.amount
+      if (r.date >= lastFrom && r.date <= lastTo) e.lastPeriod += r.amount
+      if (r.date >= thisFrom && r.date <= thisTo) e.thisPeriod += r.amount
     }
 
     const heads = Array.from(headMap.entries())
       .map(([head, v]) => ({
         head,
-        lastMonth: v.lastMonth,
-        thisMonth: v.thisMonth,
-        difference: v.thisMonth - v.lastMonth,
-        changePct: v.lastMonth > 0 ? ((v.thisMonth - v.lastMonth) / v.lastMonth) * 100 : null,
+        lastPeriod: v.lastPeriod,
+        thisPeriod: v.thisPeriod,
+        difference: v.thisPeriod - v.lastPeriod,
+        changePct: v.lastPeriod > 0 ? ((v.thisPeriod - v.lastPeriod) / v.lastPeriod) * 100 : null,
       }))
-      .sort((a, b) => b.thisMonth - a.thisMonth)
+      .sort((a, b) => b.thisPeriod - a.thisPeriod)
 
-    const totalsLast = heads.reduce((s, h) => s + h.lastMonth, 0)
-    const totalsThis = heads.reduce((s, h) => s + h.thisMonth, 0)
+    const totalsLast = heads.reduce((s, h) => s + h.lastPeriod, 0)
+    const totalsThis = heads.reduce((s, h) => s + h.thisPeriod, 0)
     const totalsDiff = totalsThis - totalsLast
     const totalsPct = totalsLast > 0 ? ((totalsThis - totalsLast) / totalsLast) * 100 : null
 
@@ -99,15 +100,14 @@ export async function GET(req: NextRequest) {
     const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
     return NextResponse.json({
-      month: monthParam,
-      thisMonth: { from: thisFrom, to: thisTo },
-      lastMonth: { from: lastFrom, to: lastTo },
+      lastPeriod: { from: lastFrom, to: lastTo },
+      thisPeriod: { from: thisFrom, to: thisTo },
       businessName: session.user.businessName,
       logoUrl,
       heads,
       totals: {
-        lastMonth: totalsLast,
-        thisMonth: totalsThis,
+        lastPeriod: totalsLast,
+        thisPeriod: totalsThis,
         difference: totalsDiff,
         changePct: totalsPct,
       },
