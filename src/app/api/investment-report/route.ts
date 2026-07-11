@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
   const [entries, businessProfile] = await Promise.all([
     db.entry.findMany({
       where: { kind: 'INVEST', date: { gte: from, lte: to } },
-      orderBy: [{ category: 'asc' }, { date: 'asc' }, { createdAt: 'asc' }],
+      // Sort by date FIRST so entries appear in proper chronological order
+      // (oldest → newest). For entries on the same date, sort by createdAt
+      // so insertion order is preserved within the day. Category is NOT
+      // used for sorting — that broke the date serial.
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
       select: {
         id: true,
         category: true,
