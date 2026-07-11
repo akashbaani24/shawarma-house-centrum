@@ -32,6 +32,7 @@ model User {
   createdDenominations   Denomination[]
   createdEntryTypes      EntryType[]
   createdBankAccounts    BankAccount[]
+  createdPurchases       Purchase[]
 }
 
 model BankAccount {
@@ -133,6 +134,7 @@ model Supplier {
 
   entries   Entry[]
   bills     SupplierBill[]
+  purchases Purchase[]
 
   @@unique([name])
 }
@@ -166,4 +168,48 @@ model SupplierBill {
 
   @@index([supplierId])
   @@index([billDate])
+}
+
+// ============ Purchase Module ============
+//
+// A "Purchase" is a single procurement event from a supplier on a given
+// date. Each purchase has one or more line items (PurchaseItem) covering
+// the Item name, quantity, unit of measure (UoM), unit price, and
+// computed total (qty × unitPrice).
+//
+// This is a standalone record — it does NOT automatically create an
+// Entry or SupplierBill. The user can use this module to log purchases
+// independently of the accounting entries, and later reconcile them
+// with the expense / supplier-bill flow.
+
+model Purchase {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseDate String  // YYYY-MM-DD
+  invoiceNumber String? // optional supplier invoice / challan number
+  note        String?
+  createdById String?
+  creator     User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([purchaseDate])
+}
+
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  itemName    String
+  qty         Float
+  uom         String   // unit of measure: kg, pcs, ltr, box, etc.
+  unitPrice   Float
+  total       Float    // qty × unitPrice (stored to avoid recompute drift)
+  createdAt   DateTime @default(now())
+
+  @@index([purchaseId])
 }

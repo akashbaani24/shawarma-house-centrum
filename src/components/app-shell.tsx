@@ -21,6 +21,7 @@ import {
   Receipt,
   TrendingUp,
   Settings,
+  ShoppingCart,
   Truck,
   Scale,
   DollarSign,
@@ -40,6 +41,7 @@ import DepositReportView from '@/components/views/deposit-report-view'
 import ExpenseComparisonView from '@/components/views/expense-comparison-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
+import PurchaseEntryView from '@/components/views/purchase-entry-view'
 import SupplierReportView from '@/components/views/supplier-report-view'
 import ProfitLossView from '@/components/views/profit-loss-view'
 import ManageUsersView from '@/components/views/manage-users-view'
@@ -53,6 +55,7 @@ export type ViewKey =
   | 'expense-office'
   | 'invest'
   | 'suppliers'
+  | 'purchases'
   | 'types'
   | 'opening'
   | 'branch-report'
@@ -90,6 +93,7 @@ const TOP_NAV: NavItem[] = [
 // Setup sub-menu items (under "Setup" group) — admin items too
 const SETUP_NAV: NavItem[] = [
   { key: 'suppliers', label: 'Supplier Entry', icon: Truck },
+  { key: 'purchases', label: 'Purchase Entry', icon: ShoppingCart },
   { key: 'types', label: 'Manage Types', icon: Tags },
   { key: 'bank-accounts', label: 'Bank Accounts', icon: Landmark },
   { key: 'opening', label: 'Opening Balance', icon: Wallet },
@@ -377,6 +381,7 @@ function AppShellInner({
             {view === 'expense-office' && <EntryView kind="EXPENSE" source="OFFICE" title="Expense By Office" />}
             {view === 'invest' && <EntryView kind="INVEST" source="BRANCH" title="Invest Entry" accentColor="amber" />}
             {view === 'suppliers' && <SupplierEntryView />}
+            {view === 'purchases' && <PurchaseEntryView />}
             {view === 'types' && <ManageTypesView />}
             {view === 'opening' && <OpeningBalanceView />}
             {view === 'bank-accounts' && <BankAccountsView />}

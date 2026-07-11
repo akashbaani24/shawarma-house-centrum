@@ -47,6 +47,7 @@ const ALL_RIGHTS = [
   { key: 'expense-office', label: 'Expense By Office' },
   { key: 'invest', label: 'Invest Entry' },
   { key: 'suppliers', label: 'Supplier Entry' },
+  { key: 'purchases', label: 'Purchase Entry' },
   { key: 'types', label: 'Manage Types' },
   { key: 'bank-accounts', label: 'Bank Accounts' },
   { key: 'opening', label: 'Opening Balance' },
