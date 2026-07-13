@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { libsql } from '@/lib/db'
 
 // GET /api/supplier-due?from=&to=
 // Returns supplier-wise due summary:
@@ -28,48 +28,68 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from must be before or equal to to' }, { status: 400 })
   }
 
-  const [suppliers, businessProfile] = await Promise.all([
-    db.supplier.findMany({
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        bills: {
-          where: { billDate: { gte: from, lte: to } },
-          select: { billAmount: true, paidAmount: true, billDate: true, billNumber: true },
-        },
-      },
+  // Use direct libsql for speed — single GROUP BY query instead of
+  // Prisma's nested `bills` include which fires a separate query per
+  // supplier (N+1 problem). This does it all in one round-trip.
+  const [suppliersRes, billsRes, logoRes] = await Promise.all([
+    libsql.execute({
+      sql: `SELECT id, name, phone, address FROM "Supplier" ORDER BY name ASC`,
+      args: [],
     }),
-    db.businessProfile.findFirst(),
+    libsql.execute({
+      sql: `SELECT "supplierId",
+                  COUNT(*) AS "billCount",
+                  COALESCE(SUM("billAmount"), 0) AS "totalBill",
+                  COALESCE(SUM("paidAmount"), 0) AS "totalPaid",
+                  MAX("billDate") AS "lastBillDate"
+            FROM "SupplierBill"
+            WHERE "billDate" >= ? AND "billDate" <= ?
+            GROUP BY "supplierId"`,
+      args: [from, to],
+    }),
+    libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1'),
   ])
 
-  const rows = suppliers.map((s) => {
-    const totalBill = s.bills.reduce((sum, b) => sum + b.billAmount, 0)
-    const totalPaid = s.bills.reduce((sum, b) => sum + b.paidAmount, 0)
+  // Build a quick lookup: supplierId → aggregated bill stats
+  const billStats = new Map<string, { billCount: number; totalBill: number; totalPaid: number; lastBillDate: string | null }>()
+  for (const row of billsRes.rows as {
+    supplierId: string; billCount: number; totalBill: number; totalPaid: number; lastBillDate: string | null
+  }[]) {
+    billStats.set(row.supplierId, {
+      billCount: Number(row.billCount) || 0,
+      totalBill: Number(row.totalBill) || 0,
+      totalPaid: Number(row.totalPaid) || 0,
+      lastBillDate: row.lastBillDate,
+    })
+  }
+
+  // Combine supplier info with bill stats
+  const rows = (suppliersRes.rows as {
+    id: string; name: string; phone: string | null; address: string | null
+  }[]).map((s) => {
+    const stats = billStats.get(s.id) ?? { billCount: 0, totalBill: 0, totalPaid: 0, lastBillDate: null }
     return {
       id: s.id,
       name: s.name,
       phone: s.phone,
       address: s.address,
-      billCount: s.bills.length,
-      totalBill,
-      totalPaid,
-      due: totalBill - totalPaid,
-      // Keep the billDate list for sort + reference (oldest unpaid bill helps prioritization)
-      lastBillDate: s.bills.length > 0 ? s.bills[s.bills.length - 1].billDate : null,
+      billCount: stats.billCount,
+      totalBill: stats.totalBill,
+      totalPaid: stats.totalPaid,
+      due: stats.totalBill - stats.totalPaid,
+      lastBillDate: stats.lastBillDate,
     }
   })
 
   const grandTotalBill = rows.reduce((s, r) => s + r.totalBill, 0)
   const grandTotalPaid = rows.reduce((s, r) => s + r.totalPaid, 0)
   const grandDue = grandTotalBill - grandTotalPaid
+  const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
   return NextResponse.json({
     from, to,
     businessName: session.user.businessName,
-    logoUrl: businessProfile?.logoUrl ?? null,
+    logoUrl,
     suppliers: rows,
     grandTotalBill,
     grandTotalPaid,

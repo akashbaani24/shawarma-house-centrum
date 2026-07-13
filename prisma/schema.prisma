@@ -88,6 +88,9 @@ model Entry {
   @@index([kind, date])
   @@index([createdById])
   @@index([paymentMethod])
+  @@index([source, date])
+  @@index([supplierId, date])
+  @@index([kind, source, date])
 }
 
 model OpeningBalance {

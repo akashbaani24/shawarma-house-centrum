@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { db, invalidateBusinessProfileCache } from '@/lib/db'
 
 // GET /api/business-profile  -> { logoUrl }
 export async function GET() {
@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
         data: { logoUrl },
       })
     }
+    // Invalidate the in-process cache so the new logo is picked up
+    // immediately by report APIs that use getBusinessLogoUrl().
+    invalidateBusinessProfileCache()
     return NextResponse.json({ logoUrl: profile.logoUrl })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'

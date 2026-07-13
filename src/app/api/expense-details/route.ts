@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { libsql, db } from '@/lib/db'
 
 // Categories that are NOT real expenses — they are account transfers
 // (money moving from one account to another). These show in the Branch
@@ -39,25 +39,41 @@ export async function GET(req: NextRequest) {
 
   // Expense Details: only ACTUAL expenses — excludes deposits/transfers
   // (Bank Deposit, bKash Mobile Deposit, etc. are account transfers, not expenses)
-  const [allEntries, businessProfile] = await Promise.all([
-    db.entry.findMany({
-      where: { kind: 'EXPENSE', date: { gte: from, lte: to } },
-      orderBy: [{ category: 'asc' }, { date: 'asc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        category: true,
-        amount: true,
-        note: true,
-        date: true,
-        paymentMethod: true,
-        source: true,
-        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
-        creator: { select: { name: true, email: true } },
-        createdAt: true,
-      },
+  // Use direct libsql for speed — the (kind, date) index makes this fast.
+  const [entriesRes, logoRes] = await Promise.all([
+    libsql.execute({
+      sql: `SELECT e.id, e.category, e.amount, e.note, e.date,
+                   e."paymentMethod", e.source, e."createdAt",
+                   b."bankName", b."accountName", b."accountNumber",
+                   u.name AS "creatorName", u.email AS "creatorEmail"
+            FROM "Entry" e
+            LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
+            LEFT JOIN "User" u ON e."createdById" = u.id
+            WHERE e.kind = ? AND e.date >= ? AND e.date <= ?
+            ORDER BY e.category ASC, e.date ASC, e."createdAt" ASC`,
+      args: ['EXPENSE', from, to],
     }),
-    db.businessProfile.findFirst(),
+    libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1'),
   ])
+
+  const allEntries = (entriesRes.rows as {
+    id: string; category: string; amount: number; note: string | null
+    date: string; paymentMethod: string; source: string; createdAt: string
+    bankName: string | null; accountName: string | null; accountNumber: string | null
+    creatorName: string | null; creatorEmail: string
+  }[]).map((r) => ({
+    id: r.id,
+    category: r.category,
+    amount: r.amount,
+    note: r.note,
+    date: r.date,
+    paymentMethod: r.paymentMethod,
+    source: r.source,
+    createdAt: r.createdAt,
+    bankAccount: r.bankName ? { bankName: r.bankName, accountName: r.accountName ?? '', accountNumber: r.accountNumber ?? '' } : null,
+    creator: { name: r.creatorName, email: r.creatorEmail },
+  }))
+  const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
   // Filter out deposit/transfer entries — they are NOT actual expenses
   const entries = allEntries.filter((e) => !isDepositCategory(e.category))
@@ -94,7 +110,7 @@ export async function GET(req: NextRequest) {
     from,
     to,
     businessName: session.user.businessName,
-    logoUrl: businessProfile?.logoUrl ?? null,
+    logoUrl,
     entries,
     total,
     byCategory: Array.from(byCategory.entries())

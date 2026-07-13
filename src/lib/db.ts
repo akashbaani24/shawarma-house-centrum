@@ -8,6 +8,7 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 // Get or create the raw libsql client (for fast direct queries that bypass Prisma)
+// Using in-memory cache for repeated queries within the same request lifecycle.
 function getLibsql(): Client {
   if (!globalForPrisma.libsql) {
     const url =
@@ -15,7 +16,10 @@ function getLibsql(): Client {
         ? process.env.DATABASE_URL
         : 'libsql://sh-akash9090.aws-ap-south-1.turso.io'
     const authToken = process.env.TURSO_AUTH_TOKEN
-    globalForPrisma.libsql = createClient({ url, authToken })
+    globalForPrisma.libsql = createClient({
+      url,
+      authToken,
+    })
   }
   return globalForPrisma.libsql
 }
@@ -50,3 +54,45 @@ export const db = new Proxy({} as PrismaClient, {
       : value
   },
 }) as PrismaClient
+
+// ============ Tiny in-process cache for rarely-changing data ============
+// Used for BusinessProfile.logoUrl (max 1 row, changes only when admin
+// updates Settings) and similar slow-changing lookups. Cache TTL = 5 min.
+// This avoids hitting the DB on every single report API call.
+
+interface CacheEntry<T> { value: T; expiresAt: number }
+const cache = new Map<string, CacheEntry<unknown>>()
+const CACHE_TTL_MS = 5 * 60 * 1000  // 5 minutes
+
+export async function cached<T>(
+  key: string,
+  ttlMs: number = CACHE_TTL_MS,
+  loader: () => Promise<T>,
+): Promise<T> {
+  const hit = cache.get(key) as CacheEntry<T> | undefined
+  if (hit && hit.expiresAt > Date.now()) {
+    return hit.value
+  }
+  const value = await loader()
+  cache.set(key, { value, expiresAt: Date.now() + ttlMs })
+  return value
+}
+
+// Convenience: get the business logo URL with caching.
+// Use this instead of `db.businessProfile.findFirst()` in hot paths.
+export async function getBusinessLogoUrl(): Promise<string | null> {
+  return cached('businessProfile:logoUrl', CACHE_TTL_MS, async () => {
+    try {
+      const res = await libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1')
+      return (res.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
+    } catch {
+      return null
+    }
+  })
+}
+
+// Call this to invalidate the cache when an admin updates the logo
+// (e.g. from POST /api/business-profile).
+export function invalidateBusinessProfileCache(): void {
+  cache.delete('businessProfile:logoUrl')
+}

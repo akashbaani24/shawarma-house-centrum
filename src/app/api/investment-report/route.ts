@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { libsql } from '@/lib/db'
 
 // GET /api/investment-report?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Returns investment entries (kind=INVEST) in a date range, with breakdowns.
@@ -22,29 +22,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from date must be before or equal to to date' }, { status: 400 })
   }
 
-  const [entries, businessProfile] = await Promise.all([
-    db.entry.findMany({
-      where: { kind: 'INVEST', date: { gte: from, lte: to } },
-      // Sort by date FIRST so entries appear in proper chronological order
-      // (oldest → newest). For entries on the same date, sort by createdAt
-      // so insertion order is preserved within the day. Category is NOT
-      // used for sorting — that broke the date serial.
-      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        category: true,
-        amount: true,
-        note: true,
-        date: true,
-        paymentMethod: true,
-        source: true,
-        bankAccount: { select: { bankName: true, accountName: true, accountNumber: true } },
-        creator: { select: { name: true, email: true } },
-        createdAt: true,
-      },
+  // Use direct libsql for speed — single JOIN query instead of Prisma's
+  // nested includes (which fire 3 queries: entry + bankAccount + creator).
+  const [entriesRes, logoRes] = await Promise.all([
+    libsql.execute({
+      sql: `SELECT e.id, e.category, e.amount, e.note, e.date,
+                   e."paymentMethod", e.source, e."createdAt",
+                   b."bankName", b."accountName", b."accountNumber",
+                   u.name AS "creatorName", u.email AS "creatorEmail"
+            FROM "Entry" e
+            LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
+            LEFT JOIN "User" u ON e."createdById" = u.id
+            WHERE e.kind = ? AND e.date >= ? AND e.date <= ?
+            ORDER BY e.date ASC, e."createdAt" ASC`,
+      args: ['INVEST', from, to],
     }),
-    db.businessProfile.findFirst(),
+    libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1'),
   ])
+
+  const entries = (entriesRes.rows as {
+    id: string; category: string; amount: number; note: string | null
+    date: string; paymentMethod: string; source: string; createdAt: string
+    bankName: string | null; accountName: string | null; accountNumber: string | null
+    creatorName: string | null; creatorEmail: string
+  }[]).map((r) => ({
+    id: r.id,
+    category: r.category,
+    amount: r.amount,
+    note: r.note,
+    date: r.date,
+    paymentMethod: r.paymentMethod,
+    source: r.source,
+    createdAt: r.createdAt,
+    bankAccount: r.bankName ? { bankName: r.bankName, accountName: r.accountName ?? '', accountNumber: r.accountNumber ?? '' } : null,
+    creator: { name: r.creatorName, email: r.creatorEmail },
+  }))
+  const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
   // Group by category
   const byCategory = new Map<string, number>()
@@ -64,7 +77,7 @@ export async function GET(req: NextRequest) {
     from,
     to,
     businessName: session.user.businessName,
-    logoUrl: businessProfile?.logoUrl ?? null,
+    logoUrl,
     entries,
     total,
     byCategory: Array.from(byCategory.entries())
