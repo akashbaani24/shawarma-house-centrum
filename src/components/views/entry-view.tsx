@@ -93,7 +93,7 @@ const PAYMENT_METHODS = [
 
 export default function EntryView({
   kind,
-  source = 'BRANCH',
+  source: sourceProp = 'BRANCH',
   title,
   accentColor,
 }: {
@@ -104,6 +104,12 @@ export default function EntryView({
 }) {
   const isIncome = kind === 'INCOME'
   const accent = accentColor ?? (isIncome ? 'emerald' : 'rose')
+
+  // For INCOME entries, allow the user to toggle between Branch and Office
+  // via a radio button at the top of the form. For EXPENSE/INVEST, the
+  // source is fixed by the prop (set by the sidebar nav item).
+  const [incomeSource, setIncomeSource] = useState<'BRANCH' | 'OFFICE'>(sourceProp)
+  const source = isIncome ? incomeSource : sourceProp
 
   const [types, setTypes] = useState<TypeItem[]>([])
   const [entries, setEntries] = useState<EntryItem[]>([])
@@ -516,6 +522,35 @@ export default function EntryView({
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Source toggle — only for INCOME entries. Lets the user
+                  pick whether this income came from Branch or Office.
+                  EXPENSE/INVEST have their source fixed by the sidebar. */}
+              {isIncome && (
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
+                  <Label className="mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                    Entry Source
+                  </Label>
+                  <RadioGroup
+                    value={incomeSource}
+                    onValueChange={(v) => setIncomeSource(v as 'BRANCH' | 'OFFICE')}
+                    className="flex flex-wrap gap-4"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <RadioGroupItem value="BRANCH" />
+                      <span>Branch</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <RadioGroupItem value="OFFICE" />
+                      <span>Office</span>
+                    </label>
+                  </RadioGroup>
+                  <p className="text-[11px] text-neutral-400 mt-1.5">
+                    {incomeSource === 'BRANCH'
+                      ? 'Branch income — shows in Branch Daily Report.'
+                      : 'Office income — tracked separately, not in Branch Daily Report.'}
+                  </p>
+                </div>
+              )}
               {kind === 'EXPENSE' ? (
                 <>
                   {/* Two-level dropdown for expenses:
