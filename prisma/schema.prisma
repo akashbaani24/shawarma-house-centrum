@@ -33,6 +33,7 @@ model User {
   createdEntryTypes      EntryType[]
   createdBankAccounts    BankAccount[]
   createdPurchases       Purchase[]
+  createdCustomers       Customer[]
 }
 
 model BankAccount {
@@ -70,10 +71,12 @@ model Entry {
   typeId            String?
   kind              String   // "INCOME" | "EXPENSE" | "INVEST"
   category          String
-  amount            Float
+  amount            Float    // Total amount of the transaction (bill amount or sale amount)
+  dueAmount         Float    @default(0) // Accrual: amount still due/unpaid. 0 = fully paid. Positive = receivable/payable.
   note              String?
-  date              String   // YYYY-MM-DD
-  paymentMethod     String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK
+  date              String   // YYYY-MM-DD — the date the transaction OCCURRED (accrual basis)
+  paymentDate       String?  // YYYY-MM-DD — when payment was actually made/received (null = not yet paid)
+  paymentMethod     String   @default("CASH") // CASH | CARD | BANK | MOBILE_BANK | CREDIT
   source            String   @default("BRANCH") // BRANCH | OFFICE — BRANCH shows in Branch Daily Report, OFFICE only in Expense Details
   bankAccountId     String?
   bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
@@ -82,6 +85,9 @@ model Entry {
   expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
   supplierId        String?
   supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  // Customer link — for credit sales (accrual: track who owes us)
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now())
 
   @@index([date])
@@ -91,6 +97,8 @@ model Entry {
   @@index([source, date])
   @@index([supplierId, date])
   @@index([kind, source, date])
+  @@index([customerId])
+  @@index([dueAmount])
 }
 
 model OpeningBalance {
@@ -215,4 +223,30 @@ model PurchaseItem {
   createdAt   DateTime @default(now())
 
   @@index([purchaseId])
+}
+
+// ============ Accrual Basis: Customer (for Credit Sales) ============
+//
+// A Customer is someone who buys on credit. When a credit sale is made,
+// an Entry is created with kind=INCOME, paymentMethod=CREDIT,
+// dueAmount > 0, and customerId set. When the customer pays, a separate
+// payment Entry can be created (kind=INCOME, paymentMethod=CASH/BANK,
+// dueAmount=0) OR the original entry's dueAmount can be reduced.
+//
+// The Accounts Receivable report shows all customers with dueAmount > 0.
+
+model Customer {
+  id          String   @id @default(cuid())
+  createdById String?
+  creator     User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  name        String
+  phone       String?
+  address     String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     Entry[]
+
+  @@unique([name])
 }
