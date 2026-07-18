@@ -509,17 +509,20 @@ export default function EntryView({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Add {isIncome ? 'Income' : 'Expense'}</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="space-y-4">
+        {/* === Expense Entry Form — grid layout matching the reference image === */}
+        <div className="bg-white dark:bg-neutral-950 border-2 border-neutral-800 dark:border-neutral-200 rounded-sm overflow-hidden">
+          {/* Section header */}
+          <div className="bg-neutral-800 dark:bg-neutral-200 px-4 py-2 text-center">
+            <span className="text-sm font-bold uppercase tracking-wide text-white dark:text-black">
+              {kind === 'EXPENSE' ? `Expense Entry by ${source === 'OFFICE' ? 'Office' : 'Branch'}` : title ?? `${isIncome ? 'Income' : 'Expense'} Entry`}
+            </span>
+          </div>
+
+          {/* Form body */}
+          <div className="p-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Source toggle — only for INCOME entries. Lets the user
-                  pick whether this income came from Branch or Office.
-                  EXPENSE/INVEST have their source fixed by the sidebar. */}
+              {/* Source toggle — only for INCOME entries */}
               {isIncome && (
                 <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
                   <Label className="mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400">
@@ -539,43 +542,209 @@ export default function EntryView({
                       <span>Office</span>
                     </label>
                   </RadioGroup>
-                  <p className="text-[11px] text-neutral-400 mt-1.5">
-                    {incomeSource === 'BRANCH'
-                      ? 'Branch income — shows in Branch Daily Report.'
-                      : 'Office income — tracked separately, not in Branch Daily Report.'}
-                  </p>
                 </div>
               )}
+
+              {/* === 3-column grid layout === */}
               {kind === 'EXPENSE' ? (
                 <>
-                  {/* Type dropdown: Regular Expense | Supplier Bill | Deposit */}
-                  <div>
-                    <Label className="mb-1.5 block">Type</Label>
-                    <Select value={expenseCategoryId} onValueChange={setExpenseCategoryId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {visibleExpenseCategories.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Row 1: Type | Expense Head | Supplier (if Supplier Bill) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Column 1: Type */}
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="mb-1 block text-xs font-semibold">Type</Label>
+                        <Select value={expenseCategoryId} onValueChange={setExpenseCategoryId}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Select type" /></SelectTrigger>
+                          <SelectContent>
+                            {visibleExpenseCategories.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  {/* Expense Head — shown for Regular Expense */}
-                  {expenseCategoryId && !isDepositCategory && !isSupplierBill && (
-                    <div>
-                      <Label className="mb-1.5 block">Expense Head</Label>
-                      {types.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
-                          <p className="text-xs text-neutral-500">No expense heads yet. Add them in Manage Types.</p>
+                      {/* Payment Date */}
+                      <div>
+                        <Label htmlFor="date" className="mb-1 block text-xs font-semibold">Payment Date</Label>
+                        <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" required />
+                      </div>
+
+                      {/* Amount — hidden for supplier bill (billAmount is used instead) */}
+                      {!(isSupplierBill && supplierId) && (
+                        <div>
+                          <Label htmlFor="amount" className="mb-1 block text-xs font-semibold">Amount ({CURRENCY})</Label>
+                          <Input id="amount" type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9" required />
                         </div>
+                      )}
+
+                      {/* Supplier bill fields — inline when supplier selected */}
+                      {isSupplierBill && supplierId && (
+                        <div className="space-y-2 p-2 rounded-md bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
+                          <div>
+                            <Label className="mb-1 block text-[10px] font-semibold">Bill Number</Label>
+                            <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-8 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-[10px] font-semibold">Bill Amount ({CURRENCY})</Label>
+                            <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="h-8 text-xs" required />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-[10px] font-semibold">Paid Amount ({CURRENCY})</Label>
+                            <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-8 text-xs" />
+                          </div>
+                          {billAmount && (
+                            <div className="text-[10px] text-neutral-500">
+                              Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Note */}
+                      <div>
+                        <Label htmlFor="note" className="mb-1 block text-xs font-semibold">Note</Label>
+                        <Textarea id="note" placeholder="e.g. Lunch at office" value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Column 2: Expense Head / Deposit Type / Payment Method */}
+                    <div className="space-y-3">
+                      {/* Expense Head — Regular Expense */}
+                      {expenseCategoryId && !isDepositCategory && !isSupplierBill && (
+                        <div>
+                          <Label className="mb-1 block text-xs font-semibold">Expense Head</Label>
+                          {types.length === 0 ? (
+                            <p className="text-xs text-neutral-500 p-2 border border-dashed rounded">No expense heads. Add in Manage Types.</p>
+                          ) : (
+                            <Select value={typeId} onValueChange={setTypeId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select expense head" /></SelectTrigger>
+                              <SelectContent>
+                                {types.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Deposit Type */}
+                      {isDepositCategory && (
+                        <div>
+                          <Label className="mb-1 block text-xs font-semibold">Deposit Type</Label>
+                          {depositTypes.length === 0 ? (
+                            <p className="text-xs text-neutral-500 p-2 border border-dashed rounded">No deposit types. Add in Manage Types.</p>
+                          ) : (
+                            <Select value={typeId} onValueChange={setTypeId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select deposit type" /></SelectTrigger>
+                              <SelectContent>
+                                {depositTypes.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Payment Method */}
+                      <div>
+                        <Label className="mb-1 block text-xs font-semibold">Payment Method</Label>
+                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_METHODS.map((m) => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Bank Account — for BANK/CARD/MOBILE_BANK */}
+                      {needsBankAccount && (
+                        <div>
+                          <Label className="mb-1 block text-xs font-semibold">
+                            {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : paymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
+                          </Label>
+                          {bankAccounts.filter((a) => a.isActive).length === 0 ? (
+                            <p className="text-xs text-amber-600 p-2 border border-dashed rounded">No active bank accounts.</p>
+                          ) : (
+                            <Select value={bankAccountId} onValueChange={setBankAccountId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select account" /></SelectTrigger>
+                              <SelectContent>
+                                {bankAccounts.filter((a) => a.isActive).map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>
+                                    {a.bankName} — {a.accountName} ({a.accountNumber})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Credit sale fields */}
+                      {paymentMethod === 'CREDIT' && (
+                        <div className="space-y-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+                          <div>
+                            <Label className="mb-1 block text-[10px] font-semibold">Customer</Label>
+                            {customers.length === 0 ? (
+                              <p className="text-[10px] text-neutral-500">No customers yet.</p>
+                            ) : (
+                              <Select value={customerId} onValueChange={setCustomerId}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select customer" /></SelectTrigger>
+                                <SelectContent>
+                                  {customers.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-[10px] font-semibold">Due Amount ({CURRENCY})</Label>
+                            <Input type="number" step="0.01" min="0" placeholder={amount || '0.00'} value={dueAmount} onChange={(e) => setDueAmount(e.target.value)} className="h-8 text-xs" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Column 3: Supplier list (if Supplier Bill) */}
+                    <div className="space-y-3">
+                      {isSupplierBill && (
+                        <div>
+                          <Label className="mb-1 block text-xs font-semibold">Supplier List</Label>
+                          {suppliers.length === 0 ? (
+                            <p className="text-xs text-amber-600 p-2 border border-dashed rounded">No suppliers. Add in Supplier Entry.</p>
+                          ) : (
+                            <Select value={supplierId} onValueChange={setSupplierId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                              <SelectContent>
+                                {suppliers.map((s) => (
+                                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* === Income/Invest layout — single column === */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-1 block text-xs font-semibold">Type / Category</Label>
+                      {loadingTypes ? (
+                        <div className="flex items-center gap-2 text-sm text-neutral-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+                      ) : types.length === 0 ? (
+                        <p className="text-xs text-neutral-500 p-2 border border-dashed rounded">No types yet. Add in Manage Types.</p>
                       ) : (
                         <Select value={typeId} onValueChange={setTypeId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select expense head" />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Select type" /></SelectTrigger>
                           <SelectContent>
                             {types.map((t) => (
                               <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -584,347 +753,186 @@ export default function EntryView({
                         </Select>
                       )}
                     </div>
-                  )}
-
-                  {/* Deposit Type — shown for Deposit */}
-                  {isDepositCategory && (
                     <div>
-                      <Label className="mb-1.5 block">Deposit Type</Label>
-                      {depositTypes.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-center">
-                          <p className="text-xs text-neutral-500">No deposit types yet. Add them in Manage Types (Deposit tab).</p>
-                        </div>
-                      ) : (
-                        <Select value={typeId} onValueChange={setTypeId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select deposit type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {depositTypes.map((t) => (
-                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                      <Label htmlFor="amount" className="mb-1 block text-xs font-semibold">Amount ({CURRENCY})</Label>
+                      <Input id="amount" type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9" required />
                     </div>
-                  )}
-
-                  {/* Supplier dropdown — shown when Type = Supplier Bill */}
-                  {isSupplierBill && (
                     <div>
-                      <Label className="mb-1.5 block">Supplier</Label>
-                      {suppliers.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
-                          <p className="text-xs text-amber-700 dark:text-amber-400">
-                            No suppliers yet. Add suppliers in the Supplier Entry menu.
-                          </p>
-                        </div>
-                      ) : (
-                        <Select value={supplierId} onValueChange={setSupplierId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select supplier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {suppliers.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                      <Label htmlFor="date" className="mb-1 block text-xs font-semibold">Date</Label>
+                      <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" required />
                     </div>
-                  )}
-
-                  {/* Supplier bill fields — shown when Type = Supplier Bill AND a supplier is selected */}
-                  {isSupplierBill && supplierId && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
-                      <div>
-                        <Label className="mb-1.5 block text-xs">Bill Number</Label>
-                        <Input placeholder="e.g. INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="mb-1.5 block text-xs">Bill Amount ({CURRENCY})</Label>
-                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="mb-1.5 block text-xs">Paid Amount ({CURRENCY})</Label>
-                        <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
-                      </div>
-                      {billAmount && (
-                        <div className="col-span-full text-xs text-neutral-500">
-                          Due Amount: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Single type dropdown for income/invest */
-                <div>
-                  <Label className="mb-1.5 block">Type / Category</Label>
-                  {loadingTypes ? (
-                    <div className="flex items-center gap-2 text-sm text-neutral-500">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
-                    </div>
-                  ) : types.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center">
-                      <Tags className="h-6 w-6 mx-auto text-neutral-400 mb-2" />
-                      <p className="text-sm text-neutral-500 mb-2">No {isIncome ? 'income' : 'expense'} types yet.</p>
-                      <p className="text-xs text-neutral-400">Go to Manage Types to create one.</p>
-                    </div>
-                  ) : (
-                    <Select value={typeId} onValueChange={setTypeId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {types.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
-
-              {/* Regular Amount field — hidden when this is a supplier bill
-                  (Bill Amount is used instead in that case) */}
-              {!(kind === 'EXPENSE' && isSupplierBill && supplierId) && (
-                <div>
-                  <Label htmlFor="amount" className="mb-1.5 block">Amount ({CURRENCY})</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="date" className="mb-1.5 block">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label className="mb-1.5 block">{isIncome ? 'Receive Method' : 'Payment Method'}</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {needsBankAccount && (
-                <div>
-                  <Label className="mb-1.5 block">
-                    {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : paymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
-                  </Label>
-                  {bankAccounts.filter((a) => a.isActive).length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-center">
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
-                        No active bank accounts. Please add one in Bank Accounts first.
-                      </p>
-                    </div>
-                  ) : (
-                    <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${paymentMethod === 'MOBILE_BANK' ? 'mobile account' : 'bank account'}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bankAccounts.filter((a) => a.isActive).map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.bankName} — {a.accountName} ({a.accountNumber})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
-
-              {/* Accrual: Credit sales fields — shown when paymentMethod = CREDIT */}
-              {paymentMethod === 'CREDIT' && (
-                <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
-                  <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                    Credit Sale — Accrual Basis
                   </div>
-                  <div>
-                    <Label className="mb-1.5 block text-xs">Customer</Label>
-                    {customers.length === 0 ? (
-                      <p className="text-xs text-neutral-500">No customers yet. Add via Customer Entry (coming soon) — for now the sale will be recorded without a customer link.</p>
-                    ) : (
-                      <Select value={customerId} onValueChange={setCustomerId}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select customer (optional)" /></SelectTrigger>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-1 block text-xs font-semibold">{isIncome ? 'Receive Method' : 'Payment Method'}</Label>
+                      <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {customers.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          {PAYMENT_METHODS.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    {needsBankAccount && (
+                      <div>
+                        <Label className="mb-1 block text-xs font-semibold">
+                          {paymentMethod === 'MOBILE_BANK' ? 'Mobile Account' : paymentMethod === 'CARD' ? 'Card Bank Account' : 'Bank Account'}
+                        </Label>
+                        {bankAccounts.filter((a) => a.isActive).length === 0 ? (
+                          <p className="text-xs text-amber-600 p-2 border border-dashed rounded">No active bank accounts.</p>
+                        ) : (
+                          <Select value={bankAccountId} onValueChange={setBankAccountId}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select account" /></SelectTrigger>
+                            <SelectContent>
+                              {bankAccounts.filter((a) => a.isActive).map((a) => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  {a.bankName} — {a.accountName} ({a.accountNumber})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     )}
-                  </div>
-                  <div>
-                    <Label className="mb-1.5 block text-xs">Due Amount (৳)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder={amount || '0.00'}
-                      value={dueAmount}
-                      onChange={(e) => setDueAmount(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <p className="text-[10px] text-neutral-500 mt-1">
-                      Leave empty to mark the full amount as due. Enter 0 if fully paid.
-                    </p>
+                    {paymentMethod === 'CREDIT' && (
+                      <div className="space-y-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-semibold">Customer</Label>
+                          {customers.length === 0 ? (
+                            <p className="text-[10px] text-neutral-500">No customers yet.</p>
+                          ) : (
+                            <Select value={customerId} onValueChange={setCustomerId}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select customer" /></SelectTrigger>
+                              <SelectContent>
+                                {customers.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-semibold">Due Amount ({CURRENCY})</Label>
+                          <Input type="number" step="0.01" min="0" placeholder={amount || '0.00'} value={dueAmount} onChange={(e) => setDueAmount(e.target.value)} className="h-8 text-xs" />
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="note" className="mb-1 block text-xs font-semibold">Note</Label>
+                      <Textarea id="note" placeholder="e.g. Optional note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="text-xs" />
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="note" className="mb-1.5 block">Note (optional)</Label>
-                <Textarea
-                  id="note"
-                  placeholder="e.g. Lunch at office"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={2}
-                />
+              {/* Submit button — pink/salmon colored like the reference image */}
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={submitting || (kind === 'EXPENSE' ? expenseCategories.length === 0 : types.length === 0)}
+                  variant={kind === 'INVEST' ? 'default' : isIncome ? 'default' : 'destructive'}
+                  style={kind === 'INVEST'
+                    ? { backgroundColor: '#d97706' }
+                    : isIncome
+                    ? { backgroundColor: '#059669' }
+                    : { backgroundColor: '#e11d48' }
+                  }
+                  className="px-6"
+                >
+                  {submitting ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Plus className="h-4 w-4 mr-2" /> Add {kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'}</>
+                  )}
+                </Button>
               </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={submitting || (kind === 'EXPENSE' ? expenseCategories.length === 0 : types.length === 0)}
-                variant={kind === 'INVEST' ? 'default' : isIncome ? 'default' : 'destructive'}
-                style={kind === 'INVEST' ? { backgroundColor: '#d97706' } : undefined}
-              >
-                {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-                ) : (
-                  <><Plus className="h-4 w-4 mr-2" /> Add {kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'}</>
-                )}
-              </Button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* List */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">{isIncome ? 'Incomes' : 'Expenses'}</CardTitle>
-              <span className={`text-sm font-semibold ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+        {/* === Expense List — bordered table like the reference image === */}
+        <div className="bg-white dark:bg-neutral-950 border-2 border-neutral-800 dark:border-neutral-200 rounded-sm overflow-hidden">
+          {/* Section header */}
+          <div className="bg-neutral-800 dark:bg-neutral-200 px-4 py-2 text-center">
+            <span className="text-sm font-bold uppercase tracking-wide text-white dark:text-black">
+              {isIncome ? 'Income' : 'Expense'} List
+            </span>
+          </div>
+
+          {/* Filters + search */}
+          <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap gap-2 items-end">
+            <div>
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">From Date</Label>
+              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-[130px] h-8 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">To Date</Label>
+              <Input type="date" value={searchText ? '' : filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-[130px] h-8 text-xs" />
+            </div>
+            {filterDate && (
+              <Button variant="ghost" size="sm" className="text-xs text-neutral-400 px-2 h-8" onClick={() => setFilterDate('')}>Clear</Button>
+            )}
+            <div className="flex-1 min-w-[150px]">
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">Search</Label>
+              <Input type="text" placeholder="Search by type, note, amount..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="text-xs h-8" />
+            </div>
+            <div className="text-sm font-semibold ml-auto">
+              <span className={isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
                 {CURRENCY}{fmt(total)}
               </span>
             </div>
-            {/* Date filter + Search */}
-            <div className="flex gap-2 mt-3">
-              <Input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-[140px] text-xs"
-                aria-label="Filter by date"
-              />
-              {filterDate && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-neutral-400 px-2"
-                  onClick={() => setFilterDate('')}
-                >
-                  Clear date
-                </Button>
-              )}
-              <Input
-                type="text"
-                placeholder="Search by category, note, amount..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="flex-1 text-xs"
-                aria-label="Search entries"
-              />
+          </div>
+
+          {/* Entry list */}
+          {loadingEntries ? (
+            <div className="py-12 text-center"><Loader2 className="h-5 w-5 animate-spin inline-block text-neutral-400" /></div>
+          ) : filteredEntries.length === 0 ? (
+            <div className="py-12 text-center text-sm text-neutral-500">
+              {entries.length === 0 ? `No ${isIncome ? 'income' : 'expense'} entries yet.` : 'No entries match your search.'}
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loadingEntries ? (
-              <div className="py-12 text-center">
-                <Loader2 className="h-5 w-5 animate-spin inline-block text-neutral-400" />
-              </div>
-            ) : filteredEntries.length === 0 ? (
-              <div className="py-12 text-center text-sm text-neutral-500">
-                {entries.length === 0
-                  ? `No ${isIncome ? 'income' : 'expense'} entries${filterDate ? ' for this date' : ''} yet.`
-                  : 'No entries match your search.'}
-              </div>
-            ) : (
-              <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
-                {filteredEntries.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 group">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold tabular-nums ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                          {isIncome ? '+' : '−'} {CURRENCY}{fmt(e.amount)}
+          ) : (
+            <div className="max-h-[500px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+              {filteredEntries.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-2.5 group hover:bg-neutral-50 dark:hover:bg-neutral-900">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold tabular-nums ${isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        {isIncome ? '+' : '−'} {CURRENCY}{fmt(e.amount)}
+                      </span>
+                      {e.paymentMethod === 'CREDIT' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 font-medium">CREDIT</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">
+                      <span className="font-medium">{e.category}</span>
+                      <span className="text-neutral-400"> · {e.date}</span>
+                      {e.paymentMethod && e.paymentMethod !== 'CASH' && e.paymentMethod !== 'CREDIT' && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
+                          {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}
+                          {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
                         </span>
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-0.5">
-                        <span className="font-medium">{e.category}</span>
-                        <span className="text-neutral-400"> · {e.date}</span>
-                        {e.paymentMethod && e.paymentMethod !== 'CASH' && (
-                          <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
-                            {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}
-                            {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
-                          </span>
-                        )}
-                      </div>
-                      {e.note && <div className="text-xs text-neutral-400 mt-0.5 truncate">{e.note}</div>}
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-60 hover:opacity-100"
-                          onClick={() => openEditDialog(e)}
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100"
-                          onClick={() => handleDelete(e.id)}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
                       )}
                     </div>
+                    {e.note && <div className="text-xs text-neutral-400 mt-0.5 truncate">{e.note}</div>}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-sky-600 opacity-60 hover:opacity-100" onClick={() => openEditDialog(e)} aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-300 hover:text-rose-600 opacity-60 hover:opacity-100" onClick={() => handleDelete(e.id)} aria-label="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ===== Edit Entry Dialog (admin only) ===== */}
