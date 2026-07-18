@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
   }
   const { searchParams } = new URL(req.url)
   const date = searchParams.get('date')
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
   const kind = searchParams.get('kind')
   const source = searchParams.get('source')
 
@@ -26,9 +28,11 @@ export async function GET(req: NextRequest) {
                WHERE 1=1`
     const args: (string)[] = []
     if (date) { sql += ' AND e.date = ?'; args.push(date) }
+    if (from) { sql += ' AND e.date >= ?'; args.push(from) }
+    if (to) { sql += ' AND e.date <= ?'; args.push(to) }
     if (kind && ['INCOME', 'EXPENSE', 'INVEST'].includes(kind)) { sql += ' AND e.kind = ?'; args.push(kind) }
     if (source && ['BRANCH', 'OFFICE'].includes(source)) { sql += ' AND e.source = ?'; args.push(source) }
-    sql += ' ORDER BY e."createdAt" DESC, e.date DESC, e.category ASC LIMIT 100'
+    sql += ' ORDER BY e."createdAt" DESC, e.date DESC, e.category ASC LIMIT 200'
 
     const res = await libsql.execute({ sql, args })
     return NextResponse.json({ entries: res.rows })

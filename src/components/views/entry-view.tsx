@@ -160,15 +160,17 @@ export default function EntryView({
     }
   }, [kind])
 
-  // Entry list: date filter + search
-  const [filterDate, setFilterDate] = useState<string>('') // empty = all dates
+  // Entry list: date range filter + search
+  const [filterFromDate, setFilterFromDate] = useState<string>('') // empty = no from
+  const [filterToDate, setFilterToDate] = useState<string>('') // empty = no to
   const [searchText, setSearchText] = useState<string>('')
 
   const loadEntries = useCallback(async () => {
     setLoadingEntries(true)
     try {
       let url = `/api/entries?kind=${kind}&source=${source}`
-      if (filterDate) url += `&date=${filterDate}`
+      if (filterFromDate) url += `&from=${filterFromDate}`
+      if (filterToDate) url += `&to=${filterToDate}`
       const res = await fetch(url, { cache: 'no-store' })
       const d = await res.json()
       if (res.ok) setEntries(d.entries)
@@ -177,7 +179,7 @@ export default function EntryView({
     } finally {
       setLoadingEntries(false)
     }
-  }, [kind, source, filterDate])
+  }, [kind, source, filterFromDate, filterToDate])
 
   const loadBankAccounts = useCallback(async () => {
     try {
@@ -863,19 +865,39 @@ export default function EntryView({
           {/* Filters + search */}
           <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap gap-2 items-end">
             <div>
-              <Label className="text-[10px] text-neutral-500 block mb-0.5">From Date</Label>
-              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-[130px] h-8 text-xs" />
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
+              <Input
+                type="date"
+                value={filterFromDate}
+                onChange={(e) => {
+                  const newFrom = e.target.value
+                  setFilterFromDate(newFrom)
+                  // Auto-set To date if it's empty or earlier than From
+                  if (newFrom && (!filterToDate || filterToDate < newFrom)) {
+                    setFilterToDate(newFrom)
+                  }
+                }}
+                className="w-[120px] h-8 text-xs"
+              />
             </div>
             <div>
-              <Label className="text-[10px] text-neutral-500 block mb-0.5">To Date</Label>
-              <Input type="date" value={searchText ? '' : filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-[130px] h-8 text-xs" />
+              <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
+              <Input
+                type="date"
+                value={filterToDate}
+                min={filterFromDate || undefined}
+                onChange={(e) => setFilterToDate(e.target.value)}
+                className="w-[120px] h-8 text-xs"
+              />
             </div>
-            {filterDate && (
-              <Button variant="ghost" size="sm" className="text-xs text-neutral-400 px-2 h-8" onClick={() => setFilterDate('')}>Clear</Button>
+            {(filterFromDate || filterToDate) && (
+              <Button variant="ghost" size="sm" className="text-xs text-neutral-400 px-2 h-8" onClick={() => { setFilterFromDate(''); setFilterToDate('') }}>
+                Clear
+              </Button>
             )}
-            <div className="flex-1 min-w-[150px]">
+            <div className="flex-1 min-w-[120px]">
               <Label className="text-[10px] text-neutral-500 block mb-0.5">Search</Label>
-              <Input type="text" placeholder="Search by type, note, amount..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="text-xs h-8" />
+              <Input type="text" placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="text-xs h-8" />
             </div>
             <div className="text-sm font-semibold ml-auto">
               <span className={isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
