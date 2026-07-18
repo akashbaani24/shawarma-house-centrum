@@ -236,17 +236,15 @@ export default function EntryView({
     }
   }, [loadTypes, loadEntries, loadBankAccounts, loadExpenseCategories, loadSuppliers, loadCustomers, kind])
 
-  // When expenseCategory changes, reset the sub-selection and Bill Type
+  // When expenseCategory changes, reset the sub-selection
   const selectedExpenseCategory = expenseCategories.find((c) => c.id === expenseCategoryId)
-  // Hide the legacy 'Supplier Bill' category from the top dropdown — it is now
-  // reached via Regular Expense + Bill Type = Supplier Bill.
-  const visibleExpenseCategories = expenseCategories.filter(
-    (c) => c.itemType !== 'SUPPLIER' && c.name.toLowerCase() !== 'supplier bill',
-  )
+  // Show ALL expense categories in the top dropdown — including 'Supplier Bill'
+  const visibleExpenseCategories = expenseCategories
   const isDepositCategory = selectedExpenseCategory?.name?.toLowerCase() === 'deposit'
-  // A supplier bill is now determined by the Bill Type radio (not by the
-  // selected ExpenseCategory).
-  const isSupplierBill = kind === 'EXPENSE' && billType === 'SUPPLIER' && !isDepositCategory
+  const isSupplierCategory = selectedExpenseCategory?.itemType === 'SUPPLIER' ||
+    selectedExpenseCategory?.name?.toLowerCase() === 'supplier bill'
+  // A supplier bill is now determined by the top-level Type = 'Supplier Bill'
+  const isSupplierBill = kind === 'EXPENSE' && isSupplierCategory
 
   // For Deposit category, load DEPOSIT-kind types instead of EXPENSE-kind types
   const [depositTypes, setDepositTypes] = useState<TypeItem[]>([])
@@ -268,23 +266,7 @@ export default function EntryView({
     setBillNumber('')
     setBillAmount('')
     setPaidAmount('')
-    // Reset Bill Type to GENERAL whenever the top-level expense category changes
-    setBillType('GENERAL')
   }, [expenseCategoryId])
-
-  // When Bill Type switches back to GENERAL, clear supplier + bill fields.
-  // When it switches to SUPPLIER, clear the regular Amount field (Bill Amount
-  // takes over).
-  useEffect(() => {
-    if (billType === 'GENERAL') {
-      setSupplierId('')
-      setBillNumber('')
-      setBillAmount('')
-      setPaidAmount('')
-    } else {
-      setAmount('')
-    }
-  }, [billType])
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
   useEffect(() => {
@@ -330,16 +312,7 @@ export default function EntryView({
         finalTypeId = selectedType.id
         finalCategory = selectedType.name
       } else if (isSupplierBill) {
-        // Regular Expense + Bill Type = Supplier Bill
-        // The expense head (typeId) is still recorded, but the display
-        // category uses the supplier's name (matches legacy behavior so
-        // P&L COGS detection and existing reports keep working).
-        const selectedType = types.find((t) => t.id === typeId)
-        if (!selectedType) {
-          toast.error('Please select an expense head')
-          return
-        }
-        finalTypeId = selectedType.id
+        // Supplier Bill type selected — pick supplier, use supplier name as category
         const selectedSupplier = suppliers.find((s) => s.id === supplierId)
         if (!selectedSupplier) {
           toast.error('Please select a supplier')
@@ -575,11 +548,7 @@ export default function EntryView({
               )}
               {kind === 'EXPENSE' ? (
                 <>
-                  {/* Two-level dropdown for expenses:
-                      1st dropdown: main expense category (Regular Expense, Deposit)
-                      2nd dropdown: depends on category — expense heads (Regular) or deposit types (Deposit)
-                      For Regular Expense, a 'Bill Type' radio appears after the expense head is picked
-                      so the same expense head can be filed as either a General Bill or a Supplier Bill. */}
+                  {/* Type dropdown: Regular Expense | Supplier Bill | Deposit */}
                   <div>
                     <Label className="mb-1.5 block">Type</Label>
                     <Select value={expenseCategoryId} onValueChange={setExpenseCategoryId}>
@@ -592,12 +561,10 @@ export default function EntryView({
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-neutral-400 mt-1">
-                      Pick Regular Expense or Deposit. Supplier bills are now filed under Regular Expense + Bill Type.
-                    </p>
                   </div>
 
-                  {expenseCategoryId && !isDepositCategory && (
+                  {/* Expense Head — shown for Regular Expense */}
+                  {expenseCategoryId && !isDepositCategory && !isSupplierBill && (
                     <div>
                       <Label className="mb-1.5 block">Expense Head</Label>
                       {types.length === 0 ? (
@@ -619,6 +586,7 @@ export default function EntryView({
                     </div>
                   )}
 
+                  {/* Deposit Type — shown for Deposit */}
                   {isDepositCategory && (
                     <div>
                       <Label className="mb-1.5 block">Deposit Type</Label>
@@ -641,37 +609,7 @@ export default function EntryView({
                     </div>
                   )}
 
-                  {/* Bill Type radio — appears once an expense head is picked
-                      under Regular Expense. Lets the user say whether this entry
-                      is a General Bill (no supplier) or a Supplier Bill. */}
-                  {expenseCategoryId && !isDepositCategory && typeId && (
-                    <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
-                      <Label className="mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                        Bill Type
-                      </Label>
-                      <RadioGroup
-                        value={billType}
-                        onValueChange={(v) => setBillType(v as 'GENERAL' | 'SUPPLIER')}
-                        className="flex flex-wrap gap-4"
-                      >
-                        <label className="flex items-center gap-2 cursor-pointer text-sm">
-                          <RadioGroupItem value="GENERAL" />
-                          <span>General Bill</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-sm">
-                          <RadioGroupItem value="SUPPLIER" />
-                          <span>Supplier Bill</span>
-                        </label>
-                      </RadioGroup>
-                      <p className="text-[11px] text-neutral-400 mt-1.5">
-                        {billType === 'SUPPLIER'
-                          ? 'Supplier Bill — pick a supplier and enter bill details below.'
-                          : 'General Bill — a simple expense, no supplier.'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Supplier dropdown — shown only when Bill Type = Supplier Bill */}
+                  {/* Supplier dropdown — shown when Type = Supplier Bill */}
                   {isSupplierBill && (
                     <div>
                       <Label className="mb-1.5 block">Supplier</Label>
@@ -696,7 +634,7 @@ export default function EntryView({
                     </div>
                   )}
 
-                  {/* Supplier bill fields — shown when Bill Type = Supplier Bill AND a supplier is selected */}
+                  {/* Supplier bill fields — shown when Type = Supplier Bill AND a supplier is selected */}
                   {isSupplierBill && supplierId && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
                       <div>
