@@ -84,7 +84,17 @@ interface BankAccountItem {
   isActive: boolean
 }
 
-const PAYMENT_METHODS = [
+// Payment methods — 'CREDIT' is only for INCOME (credit sales to customers).
+// For EXPENSE, supplier due is tracked via Bill Amount vs Paid Amount on
+// the SupplierBill record — no need for a separate CREDIT payment method.
+const PAYMENT_METHODS_EXPENSE = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CARD', label: 'Card' },
+  { value: 'BANK', label: 'Bank' },
+  { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
+]
+
+const PAYMENT_METHODS_INCOME = [
   { value: 'CASH', label: 'Cash' },
   { value: 'CARD', label: 'Card' },
   { value: 'BANK', label: 'Bank' },
@@ -134,6 +144,13 @@ export default function EntryView({
   const [dueAmount, setDueAmount] = useState('')
   const [customerId, setCustomerId] = useState<string>('')
   const [customers, setCustomers] = useState<{id: string, name: string}[]>([])
+
+  // Supplier previous due — fetched when a supplier is selected for a bill.
+  // Shows the supplier's outstanding balance so the user knows the total
+  // they owe. The new bill's Due = Bill Amount - Paid Amount gets added to
+  // this on save.
+  const [supplierPreviousDue, setSupplierPreviousDue] = useState<number>(0)
+  const [loadingSupplierDue, setLoadingSupplierDue] = useState(false)
 
   // Supplier bill fields (shown when Bill Type = Supplier Bill is selected)
   const [billNumber, setBillNumber] = useState('')
@@ -268,7 +285,26 @@ export default function EntryView({
     setBillNumber('')
     setBillAmount('')
     setPaidAmount('')
+    setSupplierPreviousDue(0)
   }, [expenseCategoryId])
+
+  // Fetch supplier's previous due when a supplier is selected for a bill.
+  // Uses the supplier-due API which aggregates all bills for the supplier.
+  useEffect(() => {
+    if (kind === 'EXPENSE' && isSupplierBill && supplierId) {
+      setLoadingSupplierDue(true)
+      fetch(`/api/supplier-due?from=2000-01-01&to=2099-12-31`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          const supplier = (d.suppliers || []).find((s: { id: string }) => s.id === supplierId)
+          setSupplierPreviousDue(supplier ? supplier.due : 0)
+        })
+        .catch(() => setSupplierPreviousDue(0))
+        .finally(() => setLoadingSupplierDue(false))
+    } else {
+      setSupplierPreviousDue(0)
+    }
+  }, [kind, isSupplierBill, supplierId])
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
   useEffect(() => {
@@ -583,6 +619,13 @@ export default function EntryView({
                       {/* Supplier bill fields — inline when supplier selected */}
                       {isSupplierBill && supplierId && (
                         <div className="space-y-2 p-2 rounded-md bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
+                          {/* Previous due from this supplier */}
+                          {supplierPreviousDue > 0 && (
+                            <div className="text-[10px] p-1.5 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                              <span className="text-amber-700 dark:text-amber-400 font-medium">Previous Due:</span>{' '}
+                              <span className="font-bold text-amber-700 dark:text-amber-400">{CURRENCY}{fmt(supplierPreviousDue)}</span>
+                            </div>
+                          )}
                           <div>
                             <Label className="mb-1 block text-[10px] font-semibold">Bill Number</Label>
                             <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-8 text-xs" />
@@ -596,8 +639,18 @@ export default function EntryView({
                             <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-8 text-xs" />
                           </div>
                           {billAmount && (
-                            <div className="text-[10px] text-neutral-500">
-                              Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+                            <div className="text-[10px] space-y-0.5">
+                              <div className="text-neutral-500">
+                                This Bill Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+                              </div>
+                              {supplierPreviousDue > 0 && (
+                                <div className="text-neutral-500">
+                                  Total Due (after this bill):{' '}
+                                  <span className="font-bold text-rose-600">
+                                    {CURRENCY}{fmt(supplierPreviousDue + (parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -656,7 +709,7 @@ export default function EntryView({
                         <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                           <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {PAYMENT_METHODS.map((m) => (
+                            {PAYMENT_METHODS_EXPENSE.map((m) => (
                               <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                             ))}
                           </SelectContent>
@@ -770,7 +823,7 @@ export default function EntryView({
                       <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {PAYMENT_METHODS.map((m) => (
+                          {(isIncome ? PAYMENT_METHODS_INCOME : PAYMENT_METHODS_EXPENSE).map((m) => (
                             <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -991,7 +1044,7 @@ export default function EntryView({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
+                  {(isIncome ? PAYMENT_METHODS_INCOME : PAYMENT_METHODS_EXPENSE).map((m) => (
                     <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                   ))}
                 </SelectContent>
