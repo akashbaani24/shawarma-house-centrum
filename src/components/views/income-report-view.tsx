@@ -71,9 +71,17 @@ function groupByDate(entries: EntryItem[]): DateGroup[] {
   return Array.from(map.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, list]) => {
-      const cash = list.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0)
-      const card = list.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0)
-      const bkash = list.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0)
+      // Classify by CATEGORY NAME (not paymentMethod) — so the Cash/Card/Bkash
+      // columns here match the Summary by Category tab exactly.
+      //   - Cash  = "Sales - Cash" category
+      //   - Card  = "Sales - Card" category
+      //   - Bkash = "Sales - Bkash" / "Sales - bKash" / "Sales Bkash" category
+      // Anything else (Misc Income, Cash Excess, etc.) goes into 'other' —
+      // shown in the Note column but NOT in Cash/Card/Bkash columns.
+      const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const cash = list.filter((e) => norm(e.category).includes('salescash')).reduce((s, e) => s + e.amount, 0)
+      const card = list.filter((e) => norm(e.category).includes('salescard')).reduce((s, e) => s + e.amount, 0)
+      const bkash = list.filter((e) => norm(e.category).includes('salesbkash') || norm(e.category).includes('bkashno') || norm(e.category).includes('bkashmobile')).reduce((s, e) => s + e.amount, 0)
       const total = list.reduce((s, e) => s + e.amount, 0)
       // Combine unique non-empty notes; if none, show "(N transactions)" or "—"
       const uniqueNotes = Array.from(new Set(list.map((e) => e.note).filter((n): n is string => !!n)))
@@ -150,9 +158,12 @@ export default function IncomeReportView() {
   const pagination = usePagination(filteredCount)
   const paginatedGroups = groupedEntries.slice(pagination.startIndex, pagination.endIndex)
   // Subtotals across all filtered entries
-  const sumCash = filteredEntries.filter((e) => e.paymentMethod === 'CASH').reduce((s, e) => s + e.amount, 0)
-  const sumCard = filteredEntries.filter((e) => e.paymentMethod === 'CARD').reduce((s, e) => s + e.amount, 0)
-  const sumBkash = filteredEntries.filter((e) => e.paymentMethod === 'MOBILE_BANK' || e.paymentMethod === 'BANK').reduce((s, e) => s + e.amount, 0)
+  // Subtotals across all filtered entries — by CATEGORY NAME (not paymentMethod)
+  // so the Cash/Card/Bkash columns match the Summary by Category tab.
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const sumCash = filteredEntries.filter((e) => norm(e.category).includes('salescash')).reduce((s, e) => s + e.amount, 0)
+  const sumCard = filteredEntries.filter((e) => norm(e.category).includes('salescard')).reduce((s, e) => s + e.amount, 0)
+  const sumBkash = filteredEntries.filter((e) => norm(e.category).includes('salesbkash') || norm(e.category).includes('bkashno') || norm(e.category).includes('bkashmobile')).reduce((s, e) => s + e.amount, 0)
   const sumTotal = filteredEntries.reduce((s, e) => s + e.amount, 0)
 
   const load = useCallback(async () => {
