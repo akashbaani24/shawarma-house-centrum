@@ -89,6 +89,7 @@ const PAYMENT_METHODS = [
   { value: 'CARD', label: 'Card' },
   { value: 'BANK', label: 'Bank' },
   { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
+  { value: 'CREDIT', label: 'Credit (Due)' },
 ]
 
 export default function EntryView({
@@ -128,6 +129,11 @@ export default function EntryView({
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
   const [bankAccountId, setBankAccountId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Accrual: Credit sales fields (shown when paymentMethod = CREDIT)
+  const [dueAmount, setDueAmount] = useState('')
+  const [customerId, setCustomerId] = useState<string>('')
+  const [customers, setCustomers] = useState<{id: string, name: string}[]>([])
 
   // Supplier bill fields (shown when Bill Type = Supplier Bill is selected)
   const [billNumber, setBillNumber] = useState('')
@@ -208,15 +214,27 @@ export default function EntryView({
     }
   }, [])
 
+  // Accrual: load customers (for credit sales)
+  const loadCustomers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/customers', { cache: 'no-store' })
+      const d = await res.json()
+      if (res.ok) setCustomers(d.customers || [])
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     loadTypes()
     loadEntries()
     loadBankAccounts()
+    loadCustomers()
     if (kind === 'EXPENSE') {
       loadExpenseCategories()
       loadSuppliers()
     }
-  }, [loadTypes, loadEntries, loadBankAccounts, loadExpenseCategories, loadSuppliers, kind])
+  }, [loadTypes, loadEntries, loadBankAccounts, loadExpenseCategories, loadSuppliers, loadCustomers, kind])
 
   // When expenseCategory changes, reset the sub-selection and Bill Type
   const selectedExpenseCategory = expenseCategories.find((c) => c.id === expenseCategoryId)
@@ -367,6 +385,10 @@ export default function EntryView({
           bankAccountId: needsBankAccount ? bankAccountId : undefined,
           expenseCategoryId: finalExpenseCategoryId || undefined,
           supplierId: finalSupplierId || undefined,
+          // Accrual: send dueAmount + customerId for credit sales
+          dueAmount: paymentMethod === 'CREDIT' ? (parseFloat(dueAmount) || amt) : 0,
+          paymentDate: paymentMethod === 'CREDIT' ? null : date,
+          customerId: paymentMethod === 'CREDIT' ? (customerId || undefined) : undefined,
         }),
       })
       const d = await res.json()
@@ -794,6 +816,45 @@ export default function EntryView({
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+              )}
+
+              {/* Accrual: Credit sales fields — shown when paymentMethod = CREDIT */}
+              {paymentMethod === 'CREDIT' && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
+                  <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    Credit Sale — Accrual Basis
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs">Customer</Label>
+                    {customers.length === 0 ? (
+                      <p className="text-xs text-neutral-500">No customers yet. Add via Customer Entry (coming soon) — for now the sale will be recorded without a customer link.</p>
+                    ) : (
+                      <Select value={customerId} onValueChange={setCustomerId}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select customer (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          {customers.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs">Due Amount (৳)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={amount || '0.00'}
+                      value={dueAmount}
+                      onChange={(e) => setDueAmount(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <p className="text-[10px] text-neutral-500 mt-1">
+                      Leave empty to mark the full amount as due. Enter 0 if fully paid.
+                    </p>
+                  </div>
                 </div>
               )}
 

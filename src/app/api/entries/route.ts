@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json()
-    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source, expenseCategoryId, supplierId } = body ?? {}
+    const { kind, typeId, category, amount, note, date, paymentMethod, bankAccountId, source, expenseCategoryId, supplierId, dueAmount, paymentDate, customerId } = body ?? {}
 
     if (kind !== 'INCOME' && kind !== 'EXPENSE' && kind !== 'INVEST') {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
@@ -57,9 +57,16 @@ export async function POST(req: NextRequest) {
     if (!cat) return NextResponse.json({ error: 'Category is required' }, { status: 400 })
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
 
-    const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK']
+    // Accrual: paymentMethod now supports 'CREDIT' for credit sales/purchases
+    const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK', 'CREDIT']
     const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
     const src = source === 'OFFICE' ? 'OFFICE' : 'BRANCH'
+
+    // Accrual: dueAmount (0 = fully paid, > 0 = partially paid or unpaid)
+    const due = typeof dueAmount === 'number' ? dueAmount : parseFloat(dueAmount ?? '0')
+    const finalDueAmount = isNaN(due) || due < 0 ? 0 : Math.min(due, amt) // can't exceed amount
+    // paymentDate: null if not yet paid, otherwise validate format
+    const finalPaymentDate = paymentDate && /^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate)) ? String(paymentDate) : null
 
     let finalTypeId: string | null = null
     if (typeId) {
@@ -81,6 +88,12 @@ export async function POST(req: NextRequest) {
       const sup = await db.supplier.findUnique({ where: { id: supplierId } })
       if (sup) finalSupplierId = sup.id
     }
+    // Accrual: validate customer (for credit sales)
+    let finalCustomerId: string | null = null
+    if (customerId) {
+      const cust = await db.customer.findUnique({ where: { id: customerId } })
+      if (cust) finalCustomerId = cust.id
+    }
 
     const entry = await db.entry.create({
       data: {
@@ -88,11 +101,15 @@ export async function POST(req: NextRequest) {
         typeId: finalTypeId,
         kind, category: cat,
         amount: Math.round(amt * 100) / 100,
+        dueAmount: Math.round(finalDueAmount * 100) / 100,
         note: note?.trim() || null,
-        date, paymentMethod: method, source: src,
+        date,
+        paymentDate: finalPaymentDate,
+        paymentMethod: method, source: src,
         bankAccountId: finalBankAccountId,
         expenseCategoryId: finalExpenseCategoryId,
         supplierId: finalSupplierId,
+        customerId: finalCustomerId,
       },
     })
     return NextResponse.json({ entry }, { status: 201 })
