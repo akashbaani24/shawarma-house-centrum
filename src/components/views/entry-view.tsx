@@ -866,38 +866,37 @@ export default function EntryView({
           <div className="p-3 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap gap-2 items-end">
             <div>
               <Label className="text-[10px] text-neutral-500 block mb-0.5">From</Label>
-              <Input
+              <input
                 type="date"
                 value={filterFromDate}
                 onChange={(e) => {
                   const newFrom = e.target.value
                   setFilterFromDate(newFrom)
-                  // Auto-set To date if it's empty or earlier than From
                   if (newFrom && (!filterToDate || filterToDate < newFrom)) {
                     setFilterToDate(newFrom)
                   }
                 }}
-                className="w-[120px] h-8 text-xs"
+                className="w-[130px] h-9 text-xs px-2 border border-neutral-200 dark:border-neutral-800 rounded-md bg-transparent"
               />
             </div>
             <div>
               <Label className="text-[10px] text-neutral-500 block mb-0.5">To</Label>
-              <Input
+              <input
                 type="date"
                 value={filterToDate}
                 min={filterFromDate || undefined}
                 onChange={(e) => setFilterToDate(e.target.value)}
-                className="w-[120px] h-8 text-xs"
+                className="w-[130px] h-9 text-xs px-2 border border-neutral-200 dark:border-neutral-800 rounded-md bg-transparent"
               />
             </div>
             {(filterFromDate || filterToDate) && (
-              <Button variant="ghost" size="sm" className="text-xs text-neutral-400 px-2 h-8" onClick={() => { setFilterFromDate(''); setFilterToDate('') }}>
+              <Button variant="ghost" size="sm" className="text-xs text-neutral-400 px-2 h-9" onClick={() => { setFilterFromDate(''); setFilterToDate('') }}>
                 Clear
               </Button>
             )}
             <div className="flex-1 min-w-[120px]">
               <Label className="text-[10px] text-neutral-500 block mb-0.5">Search</Label>
-              <Input type="text" placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="text-xs h-8" />
+              <Input type="text" placeholder="Search..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="text-xs h-9" />
             </div>
             <div className="text-sm font-semibold ml-auto">
               <span className={isIncome ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
