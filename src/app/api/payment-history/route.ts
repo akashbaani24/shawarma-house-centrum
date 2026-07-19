@@ -44,6 +44,12 @@ export async function GET(req: NextRequest) {
     return n.includes('deposit') || n.includes('bankaccount') || n.includes('cardsale') || n.includes('digitalwallet') || n.includes('bkashno') || n.includes('bkashmobile')
   }
 
+  // Excluded from all reports except Branch Daily Report
+  function isExcludedFromReports(cat: string): boolean {
+    const n = (cat || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    return n === 'paymenttopartner' || n === 'partnerpayment' || n === 'paymenttoowner' || n === 'ownerwithdrawal' || n === 'partnerwithdrawal' || n === 'profitdistribution'
+  }
+
   let sql = `SELECT e.id, e.category, e.amount, e.date, e.source, e.note,
                     e."paymentMethod",
                     b."bankName", b."accountNumber",
@@ -72,7 +78,7 @@ export async function GET(req: NextRequest) {
       bankName: string | null; accountNumber: string | null
       supplierName: string | null; supplierBillNumber: string | null
       creatorName: string | null; creatorEmail: string
-    }[]).filter((r) => !isDeposit(r.category))
+    }[]).filter((r) => !isDeposit(r.category) && !isExcludedFromReports(r.category))
 
     const total = rows.reduce((s, r) => s + r.amount, 0)
 

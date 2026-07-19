@@ -34,6 +34,10 @@ const isShortage = (cat: string) => {
   const n = norm(cat)
   return n.includes('shortage')
 }
+const isExcludedFromReports = (cat: string) => {
+  const n = norm(cat)
+  return n === 'paymenttopartner' || n === 'partnerpayment' || n === 'paymenttoowner' || n === 'ownerwithdrawal' || n === 'partnerwithdrawal' || n === 'profitdistribution'
+}
 
 const isExcess = (cat: string) => {
   const n = norm(cat)
@@ -154,6 +158,7 @@ export async function GET(req: NextRequest) {
     for (const e of rows) {
       if (e.kind !== 'EXPENSE') continue
       if (isDeposit(e.category)) continue
+      if (isExcludedFromReports(e.category)) continue
       if (isShortage(e.category)) {
         // Shortage counts as 'other'
         cashExpenseMap.get('other')!.amount += e.amount

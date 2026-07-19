@@ -25,6 +25,10 @@ function isShortage(cat: string): boolean {
   const n = (cat || '').toLowerCase().replace(/[^a-z0-9]/g, '')
   return n.includes('shortage')
 }
+function isExcludedFromReports(cat: string): boolean {
+  const n = (cat || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  return n === 'paymenttopartner' || n === 'partnerpayment' || n === 'paymenttoowner' || n === 'ownerwithdrawal' || n === 'partnerwithdrawal' || n === 'profitdistribution'
+}
 
 function isValidDate(s: string | null): s is string {
   if (!s) return false
@@ -68,7 +72,7 @@ export async function GET(req: NextRequest) {
     const rows = res.rows as { category: string; amount: number; date: string }[]
 
     // Filter out deposits + shortage — they are not "expense heads"
-    const filtered = rows.filter((r) => !isDeposit(r.category) && !isShortage(r.category))
+    const filtered = rows.filter((r) => !isDeposit(r.category) && !isShortage(r.category) && !isExcludedFromReports(r.category))
 
     // Build head → { lastPeriod, thisPeriod }
     const headMap = new Map<string, { lastPeriod: number; thisPeriod: number }>()

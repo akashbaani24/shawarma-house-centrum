@@ -17,6 +17,10 @@ const isShortage = (cat: string) => {
   const n = norm(cat)
   return n.includes('shortage')
 }
+const isExcludedFromReports = (cat: string) => {
+  const n = norm(cat)
+  return n === 'paymenttopartner' || n === 'partnerpayment' || n === 'paymenttoowner' || n === 'ownerwithdrawal' || n === 'partnerwithdrawal' || n === 'profitdistribution'
+}
 const isExcess = (cat: string) => {
   const n = norm(cat)
   return n.includes('excess') || n.includes('cashexcess') || n.includes('excesscash') || n.includes('excessfound')
@@ -79,7 +83,7 @@ export async function GET(req: NextRequest) {
     const cogsMap = new Map<string, number>()
     for (const e of rows) {
       if (e.kind !== 'EXPENSE') continue
-      if (isDeposit(e.category) || isShortage(e.category)) continue
+      if (isDeposit(e.category) || isShortage(e.category) || isExcludedFromReports(e.category)) continue
       const isCogs = (e.supplierName && e.supplierName.trim().length > 0) || isCogsCategory(e.category)
       if (!isCogs) continue
       const label = e.supplierName && e.supplierName.trim().length > 0 ? e.supplierName : e.category
@@ -95,7 +99,7 @@ export async function GET(req: NextRequest) {
     const opMap = new Map<string, number>()
     for (const e of rows) {
       if (e.kind !== 'EXPENSE') continue
-      if (isDeposit(e.category) || isShortage(e.category)) continue
+      if (isDeposit(e.category) || isShortage(e.category) || isExcludedFromReports(e.category)) continue
       const isCogs = (e.supplierName && e.supplierName.trim().length > 0) || isCogsCategory(e.category)
       if (isCogs) continue
       opMap.set(e.category, (opMap.get(e.category) ?? 0) + e.amount)
@@ -109,7 +113,7 @@ export async function GET(req: NextRequest) {
     // ===== OTHER LOSSES =====
     let totalShortage = 0
     for (const e of rows) {
-      if (e.kind === 'EXPENSE' && isShortage(e.category)) totalShortage += e.amount
+      if (e.kind === 'EXPENSE' && isShortage(e.category) && !isExcludedFromReports(e.category)) totalShortage += e.amount
     }
     const netProfit = operatingProfit - totalShortage
 

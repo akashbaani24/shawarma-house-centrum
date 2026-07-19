@@ -28,6 +28,23 @@ const isShortage = (cat: string) => {
   return n.includes('shortage')
 }
 
+// Excluded from ALL reports except Branch Daily Report.
+// These are profit distributions / owner withdrawals — not real expenses.
+// They show in Branch Daily Report (tracks cash leaving the branch) but
+// must NOT appear in P&L, Monthly Summary, Payment History, Expense
+// Details, or Expense Comparison.
+const isExcludedFromReports = (cat: string) => {
+  const n = norm(cat)
+  return (
+    n === 'paymenttopartner' ||
+    n === 'partnerpayment' ||
+    n === 'paymenttoowner' ||
+    n === 'ownerwithdrawal' ||
+    n === 'partnerwithdrawal' ||
+    n === 'profitdistribution'
+  )
+}
+
 // Excess / Extra Cash → counted as Revenue (shown separately)
 const isExcess = (cat: string) => {
   const n = norm(cat)
@@ -212,6 +229,7 @@ export async function GET(req: NextRequest) {
       if (e.kind !== 'EXPENSE') continue
       if (isDeposit(e.category)) continue
       if (isShortage(e.category)) continue
+      if (isExcludedFromReports(e.category)) continue
       const isCogs = (e.supplierName && e.supplierName.trim().length > 0) || isCogsCategory(e.category)
       if (!isCogs) continue
       const label = e.supplierName && e.supplierName.trim().length > 0 ? e.supplierName : e.category
@@ -230,6 +248,7 @@ export async function GET(req: NextRequest) {
       if (e.kind !== 'EXPENSE') continue
       if (isDeposit(e.category)) continue
       if (isShortage(e.category)) continue
+      if (isExcludedFromReports(e.category)) continue
       const isCogs = (e.supplierName && e.supplierName.trim().length > 0) || isCogsCategory(e.category)
       if (isCogs) continue
       const group = classifyOperating(e.category)
@@ -257,6 +276,7 @@ export async function GET(req: NextRequest) {
     for (const e of rows) {
       if (e.kind !== 'EXPENSE') continue
       if (!isShortage(e.category)) continue
+      if (isExcludedFromReports(e.category)) continue
       otherLossesMap.set(e.category, (otherLossesMap.get(e.category) ?? 0) + e.amount)
     }
     const otherLosses = Array.from(otherLossesMap.entries())
@@ -269,6 +289,7 @@ export async function GET(req: NextRequest) {
     for (const e of rows) {
       if (e.kind !== 'EXPENSE') continue
       if (isDeposit(e.category)) totalDeposits += e.amount
+      // Payment to Partner is not a deposit either — just skip it entirely
     }
 
     // ===== NET PROFIT =====
@@ -300,7 +321,7 @@ export async function GET(req: NextRequest) {
       netProfit,
       // counts (for summary cards)
       incomeCount: rows.filter((e) => e.kind === 'INCOME').length,
-      expenseCount: rows.filter((e) => e.kind === 'EXPENSE' && !isDeposit(e.category)).length,
+      expenseCount: rows.filter((e) => e.kind === 'EXPENSE' && !isDeposit(e.category) && !isExcludedFromReports(e.category)).length,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
