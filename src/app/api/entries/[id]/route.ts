@@ -86,15 +86,22 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params
 
-    // Before deleting the Entry, check if it has a linked SupplierBill
-    // and delete that too — otherwise orphan SupplierBill records remain
-    // and show up in the Supplier Due Report with incorrect due amounts.
+    // SOFT DELETE: mark the entry as deleted (set deletedAt) instead of
+    // actually removing it from the database. This way:
+    //   - Entry list (Expense By Branch/Office): hides deleted entries
+    //   - Reports (Branch Daily, Branch Expense, P&L, etc.): still show
+    //     the entry — because the data is still in the database
+    //   - If needed, admin can restore by clearing deletedAt
+    //
+    // Also soft-delete linked SupplierBill records (mark as deleted).
+
+    // Check if entry has a linked supplier
     const entry = await db.entry.findUnique({
       where: { id },
       select: { supplierId: true, date: true, amount: true },
     })
     if (entry?.supplierId) {
-      // Find and delete matching SupplierBill(s) for this entry
+      // Soft-delete matching SupplierBill(s)
       const bills = await db.supplierBill.findMany({
         where: {
           supplierId: entry.supplierId,
@@ -110,8 +117,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       }
     }
 
-    await db.entry.delete({ where: { id } })
-    return NextResponse.json({ ok: true })
+    // Soft-delete: set deletedAt instead of deleting
+    await db.entry.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    })
+    return NextResponse.json({ ok: true, softDeleted: true })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: msg }, { status: 500 })

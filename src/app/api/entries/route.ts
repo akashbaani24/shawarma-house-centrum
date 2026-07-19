@@ -19,13 +19,16 @@ export async function GET(req: NextRequest) {
   try {
     // LEFT JOIN BankAccount so the entry list can show the bank name + account number.
     // Sort by createdAt DESC first so the most recent entry appears at the top.
+    // EXCLUDE soft-deleted entries (deletedAt IS NOT NULL) from the entry list —
+    // they should not appear in Expense By Branch/Office, but SHOULD appear in
+    // reports (which don't filter by deletedAt).
     let sql = `SELECT e.id, e.kind, e.category, e.amount, e.note, e.date,
                       e."paymentMethod", e.source,
                       e."bankAccountId",
                       b."bankName", b."accountName", b."accountNumber"
                FROM "Entry" e
                LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
-               WHERE 1=1`
+               WHERE e."deletedAt" IS NULL`
     const args: (string)[] = []
     if (date) { sql += ' AND e.date = ?'; args.push(date) }
     if (from) { sql += ' AND e.date >= ?'; args.push(from) }

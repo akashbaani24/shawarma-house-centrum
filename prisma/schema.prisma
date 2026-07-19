@@ -89,6 +89,7 @@ model Entry {
   customerId        String?
   customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now())
+  deletedAt         DateTime?  // Soft delete: null = active, set = deleted (hidden from entry list but still in reports)
 
   @@index([date])
   @@index([kind, date])
