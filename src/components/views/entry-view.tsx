@@ -153,10 +153,14 @@ export default function EntryView({
   const [supplierPreviousDue, setSupplierPreviousDue] = useState<number>(0)
   const [loadingSupplierDue, setLoadingSupplierDue] = useState(false)
 
-  // Supplier bill fields (shown when Bill Type = Supplier Bill is selected)
+  // Supplier bill fields (shown when Type = Supplier Bill)
   const [billNumber, setBillNumber] = useState('')
   const [billAmount, setBillAmount] = useState('')
   const [paidAmount, setPaidAmount] = useState('')
+  // Bill mode: 'NEW_BILL' = new bill with amount, 'PAYMENT_ONLY' = pay previous due
+  const [billMode, setBillMode] = useState<'NEW_BILL' | 'PAYMENT_ONLY'>('NEW_BILL')
+  // Payment Only: the amount being paid toward previous due
+  const [paymentOnlyAmount, setPaymentOnlyAmount] = useState('')
   // Bill Type — new field that appears under Regular Expense.
   // 'GENERAL'  → simple expense (just amount, no supplier)
   // 'SUPPLIER' → supplier bill (supplier + bill number/amount/paid)
@@ -320,12 +324,31 @@ export default function EntryView({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // For supplier bills, use billAmount as the entry amount (the regular
-    // "Amount" field is hidden). For everything else, use the amount field.
-    const amtStr = isSupplierBill ? billAmount : amount
+    // For supplier bills: amount depends on bill mode
+    //   NEW_BILL: use billAmount
+    //   PAYMENT_ONLY: use paymentOnlyAmount
+    // For everything else: use the amount field
+    let amtStr: string
+    if (isSupplierBill) {
+      if (billMode === 'PAYMENT_ONLY') {
+        amtStr = paymentOnlyAmount
+      } else {
+        amtStr = billAmount
+      }
+    } else {
+      amtStr = amount
+    }
     const amt = parseFloat(amtStr)
     if (!amtStr || isNaN(amt) || amt <= 0) {
-      toast.error(isSupplierBill ? 'Please enter a valid bill amount' : 'Please enter a valid amount')
+      toast.error(isSupplierBill
+        ? (billMode === 'PAYMENT_ONLY' ? 'Please enter a valid payment amount' : 'Please enter a valid bill amount')
+        : 'Please enter a valid amount')
+      return
+    }
+
+    // For PAYMENT_ONLY: validate payment doesn't exceed previous due
+    if (isSupplierBill && billMode === 'PAYMENT_ONLY' && amt > supplierPreviousDue) {
+      toast.error(`Payment amount cannot exceed previous due (${CURRENCY}${fmt(supplierPreviousDue)})`)
       return
     }
 
@@ -342,7 +365,6 @@ export default function EntryView({
       }
       finalExpenseCategoryId = expenseCategoryId
       if (isDepositCategory) {
-        // Deposit — use deposit types
         const selectedType = depositTypes.find((t) => t.id === typeId)
         if (!selectedType) {
           toast.error('Please select a deposit type')
@@ -351,7 +373,6 @@ export default function EntryView({
         finalTypeId = selectedType.id
         finalCategory = selectedType.name
       } else if (isSupplierBill) {
-        // Supplier Bill type selected — pick supplier, use supplier name as category
         const selectedSupplier = suppliers.find((s) => s.id === supplierId)
         if (!selectedSupplier) {
           toast.error('Please select a supplier')
@@ -360,7 +381,6 @@ export default function EntryView({
         finalSupplierId = selectedSupplier.id
         finalCategory = selectedSupplier.name
       } else {
-        // Regular Expense + Bill Type = General Bill
         const selectedType = types.find((t) => t.id === typeId)
         if (!selectedType) {
           toast.error('Please select an expense head')
@@ -370,7 +390,6 @@ export default function EntryView({
         finalCategory = selectedType.name
       }
     } else {
-      // Income / Invest — single type dropdown
       const selectedType = types.find((t) => t.id === typeId)
       if (!selectedType) {
         toast.error('Please select a type. Create one in Manage Types if none exist.')
@@ -397,7 +416,6 @@ export default function EntryView({
           bankAccountId: needsBankAccount ? bankAccountId : undefined,
           expenseCategoryId: finalExpenseCategoryId || undefined,
           supplierId: finalSupplierId || undefined,
-          // Accrual: send dueAmount + customerId for credit sales
           dueAmount: paymentMethod === 'CREDIT' ? (parseFloat(dueAmount) || amt) : 0,
           paymentDate: paymentMethod === 'CREDIT' ? null : date,
           customerId: paymentMethod === 'CREDIT' ? (customerId || undefined) : undefined,
@@ -409,32 +427,51 @@ export default function EntryView({
       // If this is a supplier bill, also create a SupplierBill record
       if (kind === 'EXPENSE' && isSupplierBill && finalSupplierId) {
         try {
-          const bAmt = billAmount ? parseFloat(billAmount) : amt
-          const pAmt = paidAmount ? parseFloat(paidAmount) : 0
-          await fetch('/api/supplier-bills', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              supplierId: finalSupplierId,
-              billDate: date,
-              billNumber: billNumber.trim() || undefined,
-              billAmount: bAmt,
-              paidAmount: pAmt,
-              note: note.trim() || undefined,
-            }),
-          })
+          if (billMode === 'PAYMENT_ONLY') {
+            // Payment Only: create a SupplierBill with billAmount=0, paidAmount=payment
+            // This reduces the supplier's total due without adding a new bill.
+            await fetch('/api/supplier-bills', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                supplierId: finalSupplierId,
+                billDate: date,
+                billNumber: null,
+                billAmount: 0,
+                paidAmount: amt,
+                note: note.trim() || 'Payment against previous due',
+              }),
+            })
+          } else {
+            // New Bill: create SupplierBill with billAmount and paidAmount
+            const bAmt = billAmount ? parseFloat(billAmount) : amt
+            const pAmt = paidAmount ? parseFloat(paidAmount) : 0
+            await fetch('/api/supplier-bills', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                supplierId: finalSupplierId,
+                billDate: date,
+                billNumber: billNumber.trim() || undefined,
+                billAmount: bAmt,
+                paidAmount: pAmt,
+                note: note.trim() || undefined,
+              }),
+            })
+          }
         } catch {
-          // Bill creation failed — the expense entry itself succeeded,
-          // so just show a warning (non-critical)
+          // Bill creation failed — the expense entry itself succeeded
         }
       }
 
-      toast.success(`${kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} added`)
+      toast.success(`${billMode === 'PAYMENT_ONLY' ? 'Payment' : kind === 'INVEST' ? 'Investment' : isIncome ? 'Income' : 'Expense'} of ${CURRENCY}${fmt(amt)} ${billMode === 'PAYMENT_ONLY' ? 'recorded' : 'added'}`)
       setAmount('')
       setNote('')
       setBillNumber('')
       setBillAmount('')
       setPaidAmount('')
+      setPaymentOnlyAmount('')
+      setBillMode('NEW_BILL')
       loadEntries()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
@@ -627,32 +664,92 @@ export default function EntryView({
                               <span className="font-bold text-amber-700 dark:text-amber-400">{CURRENCY}{fmt(supplierPreviousDue)}</span>
                             </div>
                           )}
-                          <div>
-                            <Label className="mb-1 block text-[10px] font-semibold">Bill Number</Label>
-                            <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-8 text-xs" />
-                          </div>
-                          <div>
-                            <Label className="mb-1 block text-[10px] font-semibold">Bill Amount ({CURRENCY})</Label>
-                            <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="h-8 text-xs" required />
-                          </div>
-                          <div>
-                            <Label className="mb-1 block text-[10px] font-semibold">Paid Amount ({CURRENCY})</Label>
-                            <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-8 text-xs" />
-                          </div>
-                          {billAmount && (
-                            <div className="text-[10px] space-y-0.5">
-                              <div className="text-neutral-500">
-                                This Bill Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+
+                          {/* Bill Mode radio: New Bill vs Payment Only */}
+                          {supplierPreviousDue > 0 && (
+                            <RadioGroup
+                              value={billMode}
+                              onValueChange={(v) => setBillMode(v as 'NEW_BILL' | 'PAYMENT_ONLY')}
+                              className="flex flex-wrap gap-3"
+                            >
+                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                                <RadioGroupItem value="NEW_BILL" className="h-3 w-3" />
+                                <span>New Bill</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                                <RadioGroupItem value="PAYMENT_ONLY" className="h-3 w-3" />
+                                <span>Payment Only (Pay Previous Due)</span>
+                              </label>
+                            </RadioGroup>
+                          )}
+
+                          {/* NEW_BILL fields */}
+                          {billMode === 'NEW_BILL' && (
+                            <>
+                              <div>
+                                <Label className="mb-1 block text-[10px] font-semibold">Bill Number</Label>
+                                <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-8 text-xs" />
                               </div>
-                              {supplierPreviousDue > 0 && (
-                                <div className="text-neutral-500">
-                                  Total Due (after this bill):{' '}
-                                  <span className="font-bold text-rose-600">
-                                    {CURRENCY}{fmt(supplierPreviousDue + (parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}
-                                  </span>
+                              <div>
+                                <Label className="mb-1 block text-[10px] font-semibold">Bill Amount ({CURRENCY})</Label>
+                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="h-8 text-xs" required />
+                              </div>
+                              <div>
+                                <Label className="mb-1 block text-[10px] font-semibold">Paid Amount ({CURRENCY})</Label>
+                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-8 text-xs" />
+                              </div>
+                              {billAmount && (
+                                <div className="text-[10px] space-y-0.5">
+                                  <div className="text-neutral-500">
+                                    This Bill Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
+                                  </div>
+                                  {supplierPreviousDue > 0 && (
+                                    <div className="text-neutral-500">
+                                      Total Due (after this bill):{' '}
+                                      <span className="font-bold text-rose-600">
+                                        {CURRENCY}{fmt(supplierPreviousDue + (parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                            </div>
+                            </>
+                          )}
+
+                          {/* PAYMENT_ONLY fields */}
+                          {billMode === 'PAYMENT_ONLY' && (
+                            <>
+                              <div>
+                                <Label className="mb-1 block text-[10px] font-semibold">Payment Amount ({CURRENCY})</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max={supplierPreviousDue || undefined}
+                                  placeholder="0.00"
+                                  value={paymentOnlyAmount}
+                                  onChange={(e) => setPaymentOnlyAmount(e.target.value)}
+                                  className="h-8 text-xs"
+                                  required
+                                />
+                              </div>
+                              {paymentOnlyAmount && supplierPreviousDue > 0 && (
+                                <div className="text-[10px] space-y-0.5">
+                                  <div className="text-neutral-500">
+                                    Paying: <span className="font-semibold text-emerald-600">{CURRENCY}{fmt(parseFloat(paymentOnlyAmount) || 0)}</span>
+                                  </div>
+                                  <div className="text-neutral-500">
+                                    Remaining Due After Payment:{' '}
+                                    <span className="font-bold text-rose-600">
+                                      {CURRENCY}{fmt(Math.max(0, supplierPreviousDue - (parseFloat(paymentOnlyAmount) || 0)))}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              <p className="text-[10px] text-neutral-500 italic">
+                                No new bill created — this payment reduces the supplier's outstanding balance.
+                              </p>
+                            </>
                           )}
                         </div>
                       )}

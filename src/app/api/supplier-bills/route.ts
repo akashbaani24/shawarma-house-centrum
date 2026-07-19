@@ -51,7 +51,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid bill date is required' }, { status: 400 })
     }
     const bAmt = typeof billAmount === 'number' ? billAmount : parseFloat(billAmount)
-    if (isNaN(bAmt) || bAmt <= 0) {
+    // Allow billAmount = 0 for "Payment Only" entries (paying previous due
+    // without creating a new bill). Still reject negative values.
+    if (isNaN(bAmt) || bAmt < 0) {
       return NextResponse.json({ error: 'Valid bill amount is required' }, { status: 400 })
     }
     const pAmt = typeof paidAmount === 'number' ? paidAmount : parseFloat(paidAmount || '0')
