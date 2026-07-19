@@ -44,7 +44,13 @@ export async function GET(req: NextRequest) {
     const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
     const incomeEntries = entries.filter((e) => e.kind === 'INCOME')
-    const expenseEntries = entries.filter((e) => e.kind === 'EXPENSE')
+    // Branch Daily Report = CASH FLOW report. Only show expenses that
+    // were actually PAID (cash left the branch). Exclude:
+    //   - DUE (unpaid expenses — cash hasn't moved yet)
+    //   - CREDIT income entries with dueAmount > 0 (cash hasn't arrived)
+    // These are tracked separately in P&L (accrual) but NOT in the
+    // daily cash report.
+    const expenseEntries = entries.filter((e) => e.kind === 'EXPENSE' && e.paymentMethod !== 'DUE')
     const totalIncome = incomeEntries.reduce((s, e) => s + e.amount, 0)
     const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
 
@@ -146,6 +152,8 @@ export async function GET(req: NextRequest) {
     const denomCounted = denomRows.length > 0 && denomTotal > 0
 
     // Calculated closing = Opening + Income - Expense (what SHOULD be in the cash box)
+    // totalExpense already excludes DUE entries (filtered at line 53), so
+    // only actual cash-out expenses reduce the closing balance.
     const calculatedClosing = openingBalance + totalIncome - totalExpense
 
     // Cash in Hand: if denomination has been entered manually, use that.
