@@ -85,6 +85,31 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
   try {
     const { id } = await params
+
+    // Before deleting the Entry, check if it has a linked SupplierBill
+    // and delete that too — otherwise orphan SupplierBill records remain
+    // and show up in the Supplier Due Report with incorrect due amounts.
+    const entry = await db.entry.findUnique({
+      where: { id },
+      select: { supplierId: true, date: true, amount: true },
+    })
+    if (entry?.supplierId) {
+      // Find and delete matching SupplierBill(s) for this entry
+      const bills = await db.supplierBill.findMany({
+        where: {
+          supplierId: entry.supplierId,
+          billDate: entry.date,
+          billAmount: entry.amount,
+        },
+        select: { id: true },
+      })
+      if (bills.length > 0) {
+        await db.supplierBill.deleteMany({
+          where: { id: { in: bills.map((b) => b.id) } },
+        })
+      }
+    }
+
     await db.entry.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (e) {
