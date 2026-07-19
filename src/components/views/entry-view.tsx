@@ -161,6 +161,13 @@ export default function EntryView({
   const [billMode, setBillMode] = useState<'NEW_BILL' | 'PAYMENT_ONLY'>('NEW_BILL')
   // Payment Only: the amount being paid toward previous due
   const [paymentOnlyAmount, setPaymentOnlyAmount] = useState('')
+  // Bill Date — the date on the supplier's actual bill (may differ from payment date)
+  const [billDate, setBillDate] = useState(todayStr())
+  // Payment Date — when the payment was actually made (defaults to today)
+  const [paymentDate, setPaymentDate] = useState(todayStr())
+  // Search previous bills by bill number
+  const [searchBillNumber, setSearchBillNumber] = useState('')
+  const [matchedBills, setMatchedBills] = useState<{id: string; billNumber: string | null; billDate: string; billAmount: number; paidAmount: number; due: number}[]>([])
   // Bill Type — new field that appears under Regular Expense.
   // 'GENERAL'  → simple expense (just amount, no supplier)
   // 'SUPPLIER' → supplier bill (supplier + bill number/amount/paid)
@@ -306,10 +313,36 @@ export default function EntryView({
         })
         .catch(() => setSupplierPreviousDue(0))
         .finally(() => setLoadingSupplierDue(false))
+      // Also fetch this supplier's bills for the bill-number search feature
+      fetch('/api/supplier-bills', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          const supplierBills = (d.bills || [])
+            .filter((b: { supplier: { id: string }; billNumber: string | null; billDate: string; billAmount: number; paidAmount: number }) => b.supplier.id === supplierId)
+            .map((b: { id: string; supplier: { id: string }; billNumber: string | null; billDate: string; billAmount: number; paidAmount: number }) => ({
+              id: b.id,
+              billNumber: b.billNumber,
+              billDate: b.billDate,
+              billAmount: b.billAmount,
+              paidAmount: b.paidAmount,
+              due: b.billAmount - b.paidAmount,
+            }))
+          setMatchedBills(supplierBills)
+        })
+        .catch(() => setMatchedBills([]))
     } else {
       setSupplierPreviousDue(0)
+      setMatchedBills([])
     }
   }, [kind, isSupplierBill, supplierId])
+
+  // Filter bills by search text
+  const filteredMatchedBills = searchBillNumber.trim()
+    ? matchedBills.filter((b) =>
+        (b.billNumber || '').toLowerCase().includes(searchBillNumber.toLowerCase().trim()) ||
+        b.billDate.includes(searchBillNumber.trim())
+      )
+    : matchedBills.filter((b) => b.due > 0) // Show only due bills when no search
 
   // Reset bank account when method changes away from BANK/MOBILE_BANK
   useEffect(() => {
@@ -417,7 +450,8 @@ export default function EntryView({
           expenseCategoryId: finalExpenseCategoryId || undefined,
           supplierId: finalSupplierId || undefined,
           dueAmount: paymentMethod === 'CREDIT' ? (parseFloat(dueAmount) || amt) : 0,
-          paymentDate: paymentMethod === 'CREDIT' ? null : date,
+          // For supplier bills, paymentDate = the payment date field (may differ from billDate)
+          paymentDate: isSupplierBill ? date : (paymentMethod === 'CREDIT' ? null : date),
           customerId: paymentMethod === 'CREDIT' ? (customerId || undefined) : undefined,
         }),
       })
@@ -430,12 +464,13 @@ export default function EntryView({
           if (billMode === 'PAYMENT_ONLY') {
             // Payment Only: create a SupplierBill with billAmount=0, paidAmount=payment
             // billNumber records which original bill is being paid off.
+            // billDate = the original bill date, paymentDate = when payment was made
             await fetch('/api/supplier-bills', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 supplierId: finalSupplierId,
-                billDate: date,
+                billDate: billDate,  // original bill date
                 billNumber: billNumber.trim() || null,
                 billAmount: 0,
                 paidAmount: amt,
@@ -444,6 +479,7 @@ export default function EntryView({
             })
           } else {
             // New Bill: create SupplierBill with billAmount and paidAmount
+            // billDate = the date on the supplier's bill, date = payment date
             const bAmt = billAmount ? parseFloat(billAmount) : amt
             const pAmt = paidAmount ? parseFloat(paidAmount) : 0
             await fetch('/api/supplier-bills', {
@@ -451,7 +487,7 @@ export default function EntryView({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 supplierId: finalSupplierId,
-                billDate: date,
+                billDate: billDate,  // bill date (may differ from payment date)
                 billNumber: billNumber.trim() || undefined,
                 billAmount: bAmt,
                 paidAmount: pAmt,
@@ -472,6 +508,8 @@ export default function EntryView({
       setPaidAmount('')
       setPaymentOnlyAmount('')
       setBillMode('NEW_BILL')
+      setBillDate(todayStr())
+      setSearchBillNumber('')
       loadEntries()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
@@ -640,11 +678,37 @@ export default function EntryView({
                         </Select>
                       </div>
 
-                      {/* Payment Date */}
-                      <div>
-                        <Label htmlFor="date" className="mb-1 block text-xs font-semibold">Payment Date</Label>
-                        <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" required />
-                      </div>
+                      {/* Bill Date + Payment Date — side by side for supplier bills */}
+                      {isSupplierBill && supplierId ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="mb-1 block text-xs font-semibold">Bill Date</Label>
+                            <input
+                              type="date"
+                              value={billDate}
+                              onChange={(e) => setBillDate(e.target.value)}
+                              className="w-full h-9 text-sm px-2 border border-neutral-200 dark:border-neutral-800 rounded-md bg-transparent"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="date" className="mb-1 block text-xs font-semibold">Payment Date</Label>
+                            <input
+                              id="date"
+                              type="date"
+                              value={date}
+                              onChange={(e) => setDate(e.target.value)}
+                              className="w-full h-9 text-sm px-2 border border-neutral-200 dark:border-neutral-800 rounded-md bg-transparent"
+                              required
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        /* Payment Date only — for non-supplier-bill entries */
+                        <div>
+                          <Label htmlFor="date" className="mb-1 block text-xs font-semibold">Payment Date</Label>
+                          <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" required />
+                        </div>
+                      )}
 
                       {/* Amount — hidden for supplier bill (billAmount is used instead) */}
                       {!(isSupplierBill && supplierId) && (
@@ -719,10 +783,45 @@ export default function EntryView({
                           {/* PAYMENT_ONLY fields */}
                           {billMode === 'PAYMENT_ONLY' && (
                             <>
+                              {/* Bill number search */}
+                              <div>
+                                <Label className="mb-1 block text-xs font-semibold">Search Bill Number</Label>
+                                <Input
+                                  placeholder="Type bill number to find..."
+                                  value={searchBillNumber}
+                                  onChange={(e) => setSearchBillNumber(e.target.value)}
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                              {/* Matched bills list */}
+                              {filteredMatchedBills.length > 0 && (
+                                <div className="max-h-32 overflow-y-auto rounded border border-neutral-200 dark:border-neutral-700">
+                                  {filteredMatchedBills.slice(0, 10).map((b) => (
+                                    <button
+                                      key={b.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setBillNumber(b.billNumber || '')
+                                        setSearchBillNumber(b.billNumber || b.billDate)
+                                      }}
+                                      className={`w-full text-left px-2 py-1.5 text-xs hover:bg-sky-50 dark:hover:bg-sky-950/30 border-b border-neutral-100 dark:border-neutral-800 last:border-0 ${
+                                        billNumber === (b.billNumber || '') ? 'bg-sky-50 dark:bg-sky-950/30' : ''
+                                      }`}
+                                    >
+                                      <span className="font-medium">{b.billNumber || '(no number)'}</span>
+                                      <span className="text-neutral-400"> · {b.billDate}</span>
+                                      <span className="text-neutral-500"> · Bill: {CURRENCY}{fmt(b.billAmount)}</span>
+                                      {b.due > 0 && (
+                                        <span className="text-rose-600 font-semibold"> · Due: {CURRENCY}{fmt(b.due)}</span>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                               <div>
                                 <Label className="mb-1 block text-xs font-semibold">Bill / Reference Number</Label>
                                 <Input
-                                  placeholder="e.g. INV-001 (which bill is being paid)"
+                                  placeholder="e.g. INV-001"
                                   value={billNumber}
                                   onChange={(e) => setBillNumber(e.target.value)}
                                   className="h-9 text-sm"
