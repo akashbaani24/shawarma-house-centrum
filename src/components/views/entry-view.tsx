@@ -429,14 +429,14 @@ export default function EntryView({
         try {
           if (billMode === 'PAYMENT_ONLY') {
             // Payment Only: create a SupplierBill with billAmount=0, paidAmount=payment
-            // This reduces the supplier's total due without adding a new bill.
+            // billNumber records which original bill is being paid off.
             await fetch('/api/supplier-bills', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 supplierId: finalSupplierId,
                 billDate: date,
-                billNumber: null,
+                billNumber: billNumber.trim() || null,
                 billAmount: 0,
                 paidAmount: amt,
                 note: note.trim() || 'Payment against previous due',
@@ -659,7 +659,7 @@ export default function EntryView({
                         <div className="space-y-2 p-2 rounded-md bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900">
                           {/* Previous due from this supplier */}
                           {supplierPreviousDue > 0 && (
-                            <div className="text-[10px] p-1.5 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                            <div className="text-xs p-2 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                               <span className="text-amber-700 dark:text-amber-400 font-medium">Previous Due:</span>{' '}
                               <span className="font-bold text-amber-700 dark:text-amber-400">{CURRENCY}{fmt(supplierPreviousDue)}</span>
                             </div>
@@ -670,14 +670,14 @@ export default function EntryView({
                             <RadioGroup
                               value={billMode}
                               onValueChange={(v) => setBillMode(v as 'NEW_BILL' | 'PAYMENT_ONLY')}
-                              className="flex flex-wrap gap-3"
+                              className="flex flex-wrap gap-4"
                             >
-                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
-                                <RadioGroupItem value="NEW_BILL" className="h-3 w-3" />
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <RadioGroupItem value="NEW_BILL" className="h-4 w-4" />
                                 <span>New Bill</span>
                               </label>
-                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
-                                <RadioGroupItem value="PAYMENT_ONLY" className="h-3 w-3" />
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <RadioGroupItem value="PAYMENT_ONLY" className="h-4 w-4" />
                                 <span>Payment Only (Pay Previous Due)</span>
                               </label>
                             </RadioGroup>
@@ -687,24 +687,24 @@ export default function EntryView({
                           {billMode === 'NEW_BILL' && (
                             <>
                               <div>
-                                <Label className="mb-1 block text-[10px] font-semibold">Bill Number</Label>
-                                <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-8 text-xs" />
+                                <Label className="mb-1 block text-xs font-semibold">Bill Number</Label>
+                                <Input placeholder="INV-001" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="h-9 text-sm" />
                               </div>
                               <div>
-                                <Label className="mb-1 block text-[10px] font-semibold">Bill Amount ({CURRENCY})</Label>
-                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="h-8 text-xs" required />
+                                <Label className="mb-1 block text-xs font-semibold">Bill Amount ({CURRENCY})</Label>
+                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="h-9 text-sm" required />
                               </div>
                               <div>
-                                <Label className="mb-1 block text-[10px] font-semibold">Paid Amount ({CURRENCY})</Label>
-                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-8 text-xs" />
+                                <Label className="mb-1 block text-xs font-semibold">Paid Amount ({CURRENCY})</Label>
+                                <Input type="number" step="0.01" min="0" placeholder="0.00" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-9 text-sm" />
                               </div>
                               {billAmount && (
-                                <div className="text-[10px] space-y-0.5">
-                                  <div className="text-neutral-500">
+                                <div className="text-xs space-y-1 p-2 rounded bg-neutral-50 dark:bg-neutral-900">
+                                  <div className="text-neutral-600 dark:text-neutral-400">
                                     This Bill Due: <span className="font-semibold text-rose-600">{CURRENCY}{fmt((parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}</span>
                                   </div>
                                   {supplierPreviousDue > 0 && (
-                                    <div className="text-neutral-500">
+                                    <div className="text-neutral-600 dark:text-neutral-400">
                                       Total Due (after this bill):{' '}
                                       <span className="font-bold text-rose-600">
                                         {CURRENCY}{fmt(supplierPreviousDue + (parseFloat(billAmount) || 0) - (parseFloat(paidAmount) || 0))}
@@ -720,7 +720,17 @@ export default function EntryView({
                           {billMode === 'PAYMENT_ONLY' && (
                             <>
                               <div>
-                                <Label className="mb-1 block text-[10px] font-semibold">Payment Amount ({CURRENCY})</Label>
+                                <Label className="mb-1 block text-xs font-semibold">Bill / Reference Number</Label>
+                                <Input
+                                  placeholder="e.g. INV-001 (which bill is being paid)"
+                                  value={billNumber}
+                                  onChange={(e) => setBillNumber(e.target.value)}
+                                  className="h-9 text-sm"
+                                />
+                                <p className="text-[10px] text-neutral-400 mt-0.5">Enter the original bill number you are paying off</p>
+                              </div>
+                              <div>
+                                <Label className="mb-1 block text-xs font-semibold">Payment Amount ({CURRENCY})</Label>
                                 <Input
                                   type="number"
                                   step="0.01"
@@ -729,16 +739,16 @@ export default function EntryView({
                                   placeholder="0.00"
                                   value={paymentOnlyAmount}
                                   onChange={(e) => setPaymentOnlyAmount(e.target.value)}
-                                  className="h-8 text-xs"
+                                  className="h-9 text-sm"
                                   required
                                 />
                               </div>
                               {paymentOnlyAmount && supplierPreviousDue > 0 && (
-                                <div className="text-[10px] space-y-0.5">
-                                  <div className="text-neutral-500">
+                                <div className="text-xs space-y-1 p-2 rounded bg-neutral-50 dark:bg-neutral-900">
+                                  <div className="text-neutral-600 dark:text-neutral-400">
                                     Paying: <span className="font-semibold text-emerald-600">{CURRENCY}{fmt(parseFloat(paymentOnlyAmount) || 0)}</span>
                                   </div>
-                                  <div className="text-neutral-500">
+                                  <div className="text-neutral-600 dark:text-neutral-400">
                                     Remaining Due After Payment:{' '}
                                     <span className="font-bold text-rose-600">
                                       {CURRENCY}{fmt(Math.max(0, supplierPreviousDue - (parseFloat(paymentOnlyAmount) || 0)))}
@@ -746,7 +756,7 @@ export default function EntryView({
                                   </div>
                                 </div>
                               )}
-                              <p className="text-[10px] text-neutral-500 italic">
+                              <p className="text-[11px] text-neutral-500 italic">
                                 No new bill created — this payment reduces the supplier's outstanding balance.
                               </p>
                             </>
