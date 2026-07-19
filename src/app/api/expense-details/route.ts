@@ -68,15 +68,23 @@ export async function GET(req: NextRequest) {
   // Expense Details: only ACTUAL expenses — excludes deposits/transfers
   // (Bank Deposit, bKash Mobile Deposit, etc. are account transfers, not expenses)
   // Use direct libsql for speed — the (kind, date) index makes this fast.
+  // JOIN SupplierBill to get paidAmount — for supplier bills, only the
+  // PAID portion counts as expense in this report (Due = not yet expense).
   const [entriesRes, logoRes] = await Promise.all([
     libsql.execute({
       sql: `SELECT e.id, e.category, e.amount, e.note, e.date,
                    e."paymentMethod", e.source, e."createdAt",
                    b."bankName", b."accountName", b."accountNumber",
-                   u.name AS "creatorName", u.email AS "creatorEmail"
+                   u.name AS "creatorName", u.email AS "creatorEmail",
+                   e."supplierId",
+                   sb."paidAmount" AS "billPaidAmount",
+                   sb."billAmount" AS "billBillAmount"
             FROM "Entry" e
             LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
             LEFT JOIN "User" u ON e."createdById" = u.id
+            LEFT JOIN "SupplierBill" sb ON sb."supplierId" = e."supplierId"
+              AND sb."billDate" = e.date
+              AND sb."billAmount" = e.amount
             WHERE e.kind = ? AND e.date >= ? AND e.date <= ?
             ORDER BY e.category ASC, e.date ASC, e."createdAt" ASC`,
       args: ['EXPENSE', from, to],
@@ -89,25 +97,45 @@ export async function GET(req: NextRequest) {
     date: string; paymentMethod: string; source: string; createdAt: string
     bankName: string | null; accountName: string | null; accountNumber: string | null
     creatorName: string | null; creatorEmail: string
-  }[]).map((r) => ({
-    id: r.id,
-    category: r.category,
-    amount: r.amount,
-    note: r.note,
-    date: r.date,
-    paymentMethod: r.paymentMethod,
-    source: r.source,
-    createdAt: r.createdAt,
-    bankAccount: r.bankName ? { bankName: r.bankName, accountName: r.accountName ?? '', accountNumber: r.accountNumber ?? '' } : null,
-    creator: { name: r.creatorName, email: r.creatorEmail },
-  }))
+    supplierId: string | null
+    billPaidAmount: number | null
+    billBillAmount: number | null
+  }[]).map((r) => {
+    // For supplier bills: if there's a linked SupplierBill, use paidAmount
+    // as the effective amount (Due = not expense yet).
+    // For DUE payment method: skip entirely (not paid).
+    // For everything else: use full amount.
+    let effectiveAmount = r.amount
+    if (r.supplierId && r.billPaidAmount !== null) {
+      // This is a supplier bill — only the paid portion is an expense
+      effectiveAmount = Number(r.billPaidAmount) || 0
+    }
+    return {
+      id: r.id,
+      category: r.category,
+      amount: effectiveAmount,
+      originalAmount: r.amount,
+      note: r.note,
+      date: r.date,
+      paymentMethod: r.paymentMethod,
+      source: r.source,
+      createdAt: r.createdAt,
+      bankAccount: r.bankName ? { bankName: r.bankName, accountName: r.accountName ?? '', accountNumber: r.accountNumber ?? '' } : null,
+      creator: { name: r.creatorName, email: r.creatorEmail },
+    }
+  })
   const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
-  // Filter out deposit/transfer entries AND excluded categories
-  // (Payment to Partner, etc.) — these are NOT actual expenses for
-  // the Branch Expense Report. They still show in Branch Daily Report.
+  // Filter out:
+  // 1. Deposit/transfer entries
+  // 2. Excluded categories (Payment to Partner, etc.)
+  // 3. DUE payment method (not paid yet = not an expense)
+  // 4. Supplier bills where paidAmount = 0 (fully unpaid = no expense)
   const entries = allEntries.filter(
-    (e) => !isDepositCategory(e.category) && !isExcludedFromExpenseReport(e.category)
+    (e) => !isDepositCategory(e.category)
+      && !isExcludedFromExpenseReport(e.category)
+      && e.paymentMethod !== 'DUE'
+      && e.amount > 0  // skip entries with 0 paid amount (fully unpaid bills)
   )
 
   // Group by category for the summary

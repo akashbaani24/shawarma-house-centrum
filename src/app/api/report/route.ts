@@ -25,12 +25,19 @@ export async function GET(req: NextRequest) {
 
   try {
     // Fetch entries, denominations, business profile — all in parallel
+    // JOIN SupplierBill to get paidAmount — for supplier bills, only the
+    // PAID portion counts in the daily cash flow report.
     const [entriesRes, denomRes, logoRes] = await Promise.all([
       libsql.execute({
         sql: `SELECT e.id, e.kind, e.category, e.amount, e.note, e."paymentMethod", e.source, e."createdById",
-              b."bankName", b."accountName", b."accountNumber"
+              b."bankName", b."accountName", b."accountNumber",
+              e."supplierId",
+              sb."paidAmount" AS "billPaidAmount"
               FROM "Entry" e
               LEFT JOIN "BankAccount" b ON e."bankAccountId" = b.id
+              LEFT JOIN "SupplierBill" sb ON sb."supplierId" = e."supplierId"
+                AND sb."billDate" = e.date
+                AND sb."billAmount" = e.amount
               WHERE e.date = ? AND e.source = ? AND e.kind IN (?, ?)
               ORDER BY e.category ASC, e."createdAt" ASC`,
         args: [date, 'BRANCH', 'INCOME', 'EXPENSE'],
@@ -39,18 +46,33 @@ export async function GET(req: NextRequest) {
       libsql.execute('SELECT "logoUrl" FROM "BusinessProfile" LIMIT 1'),
     ])
 
-    const entries = entriesRes.rows as { id: string; kind: string; category: string; amount: number; note: string | null; paymentMethod: string; source: string; createdById: string | null; bankName: string | null; accountName: string | null; accountNumber: string | null }[]
+    const rawEntries = entriesRes.rows as {
+      id: string; kind: string; category: string; amount: number; note: string | null
+      paymentMethod: string; source: string; createdById: string | null
+      bankName: string | null; accountName: string | null; accountNumber: string | null
+      supplierId: string | null; billPaidAmount: number | null
+    }[]
     const denomRows = denomRes.rows as { denomination: number; count: number }[]
     const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
+
+    // Adjust amounts: for supplier bills, use paidAmount instead of full bill amount
+    // (only the paid portion represents actual cash outflow)
+    const entries = rawEntries.map((e) => {
+      let effectiveAmount = e.amount
+      if (e.supplierId && e.billPaidAmount !== null) {
+        effectiveAmount = Number(e.billPaidAmount) || 0
+      }
+      return { ...e, amount: effectiveAmount }
+    })
 
     const incomeEntries = entries.filter((e) => e.kind === 'INCOME')
     // Branch Daily Report = CASH FLOW report. Only show expenses that
     // were actually PAID (cash left the branch). Exclude:
     //   - DUE (unpaid expenses — cash hasn't moved yet)
-    //   - CREDIT income entries with dueAmount > 0 (cash hasn't arrived)
-    // These are tracked separately in P&L (accrual) but NOT in the
-    // daily cash report.
-    const expenseEntries = entries.filter((e) => e.kind === 'EXPENSE' && e.paymentMethod !== 'DUE')
+    //   - Supplier bills where paidAmount = 0 (fully unpaid)
+    const expenseEntries = entries.filter(
+      (e) => e.kind === 'EXPENSE' && e.paymentMethod !== 'DUE' && e.amount > 0
+    )
     const totalIncome = incomeEntries.reduce((s, e) => s + e.amount, 0)
     const totalExpense = expenseEntries.reduce((s, e) => s + e.amount, 0)
 
