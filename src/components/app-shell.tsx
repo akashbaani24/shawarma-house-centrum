@@ -39,6 +39,7 @@ import SupplierDueView from '@/components/views/supplier-due-view'
 import PaymentHistoryView from '@/components/views/payment-history-view'
 import DepositReportView from '@/components/views/deposit-report-view'
 import ExpenseComparisonView from '@/components/views/expense-comparison-view'
+import PaymentToPartnerView from '@/components/views/payment-to-partner-view'
 import SettingsView from '@/components/views/settings-view'
 import SupplierEntryView from '@/components/views/supplier-entry-view'
 import PurchaseEntryView from '@/components/views/purchase-entry-view'
@@ -69,6 +70,7 @@ export type ViewKey =
   | 'payment-history'
   | 'deposit-report'
   | 'expense-comparison'
+  | 'payment-to-partner'
   | 'users'
   | 'reset'
   | 'settings'
@@ -114,6 +116,7 @@ const REPORT_NAV: NavItem[] = [
   { key: 'payment-history', label: 'Payment History', icon: Receipt },
   { key: 'deposit-report', label: 'Deposit Report', icon: Landmark },
   { key: 'expense-comparison', label: 'Expense Comparison', icon: Scale },
+  { key: 'payment-to-partner', label: 'Payment to Partner', icon: Users },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -396,6 +399,7 @@ function AppShellInner({
             {view === 'payment-history' && <PaymentHistoryView />}
             {view === 'deposit-report' && <DepositReportView />}
             {view === 'expense-comparison' && <ExpenseComparisonView />}
+            {view === 'payment-to-partner' && <PaymentToPartnerView />}
             {view === 'users' && isAdmin && <ManageUsersView currentUser={user} />}
             {view === 'settings' && isAdmin && <SettingsView />}
             {view === 'reset' && isAdmin && <ResetDataView />}

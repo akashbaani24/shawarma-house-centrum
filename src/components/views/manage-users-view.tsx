@@ -62,6 +62,7 @@ const ALL_RIGHTS = [
   { key: 'payment-history', label: 'Payment History' },
   { key: 'deposit-report', label: 'Deposit Report' },
   { key: 'expense-comparison', label: 'Expense Comparison' },
+  { key: 'payment-to-partner', label: 'Payment to Partner' },
 ]
 
 interface UserItem {
