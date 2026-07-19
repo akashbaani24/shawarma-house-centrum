@@ -18,6 +18,34 @@ function isDepositCategory(category: string): boolean {
   )
 }
 
+// Categories that show in Branch Daily Report but should be EXCLUDED
+// from Branch Expense Report. These are not real operating expenses —
+// they are profit distributions / owner withdrawals / partner payments
+// that are tracked for cash flow purposes but don't belong in the
+// expense breakdown.
+//
+// Currently excluded:
+//   - "Payment to Partner" — profit distribution to partners/owners
+//
+// These still appear in:
+//   - Branch Daily Report (as a cash outflow)
+//   - P&L Report (as an operating expense)
+//   - Monthly Summary
+//   - Payment History
+function isExcludedFromExpenseReport(category: string): boolean {
+  const c = category.toLowerCase().trim()
+  // Normalize: remove extra spaces, hyphens, etc.
+  const n = c.replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
+  return (
+    n === 'payment to partner' ||
+    n === 'partner payment' ||
+    n === 'payment to owner' ||
+    n === 'owner withdrawal' ||
+    n === 'partner withdrawal' ||
+    n === 'profit distribution'
+  )
+}
+
 // GET /api/expense-details?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Returns ONLY actual expense entries (excludes deposits/transfers) in a date range.
 export async function GET(req: NextRequest) {
@@ -75,8 +103,12 @@ export async function GET(req: NextRequest) {
   }))
   const logoUrl = (logoRes.rows[0] as { logoUrl: string | null })?.logoUrl ?? null
 
-  // Filter out deposit/transfer entries — they are NOT actual expenses
-  const entries = allEntries.filter((e) => !isDepositCategory(e.category))
+  // Filter out deposit/transfer entries AND excluded categories
+  // (Payment to Partner, etc.) — these are NOT actual expenses for
+  // the Branch Expense Report. They still show in Branch Daily Report.
+  const entries = allEntries.filter(
+    (e) => !isDepositCategory(e.category) && !isExcludedFromExpenseReport(e.category)
+  )
 
   // Group by category for the summary
   const byCategory = new Map<string, number>()
