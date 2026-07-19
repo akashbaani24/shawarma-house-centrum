@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     if (!cat) return NextResponse.json({ error: 'Category is required' }, { status: 400 })
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
 
-    // Accrual: paymentMethod now supports 'CREDIT' for credit sales/purchases
-    const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK', 'CREDIT']
+    // Accrual: paymentMethod now supports 'CREDIT' for credit sales and 'DUE' for unpaid expenses
+    const validMethods = ['CASH', 'CARD', 'BANK', 'MOBILE_BANK', 'CREDIT', 'DUE']
     const method = validMethods.includes(paymentMethod) ? paymentMethod : 'CASH'
     const src = source === 'OFFICE' ? 'OFFICE' : 'BRANCH'
 

@@ -92,6 +92,7 @@ const PAYMENT_METHODS_EXPENSE = [
   { value: 'CARD', label: 'Card' },
   { value: 'BANK', label: 'Bank' },
   { value: 'MOBILE_BANK', label: 'Mobile Bank (bKash/Nagad)' },
+  { value: 'DUE', label: 'Due (Unpaid)' },
 ]
 
 const PAYMENT_METHODS_INCOME = [
@@ -981,7 +982,12 @@ export default function EntryView({
                     <div className="text-xs text-neutral-500 mt-0.5">
                       <span className="font-medium">{e.category}</span>
                       <span className="text-neutral-400"> · {e.date}</span>
-                      {e.paymentMethod && e.paymentMethod !== 'CASH' && e.paymentMethod !== 'CREDIT' && (
+                      {e.paymentMethod === 'DUE' && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400 font-medium">
+                          Due
+                        </span>
+                      )}
+                      {e.paymentMethod && e.paymentMethod !== 'CASH' && e.paymentMethod !== 'CREDIT' && e.paymentMethod !== 'DUE' && (
                         <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 font-medium">
                           {e.paymentMethod === 'MOBILE_BANK' ? 'Mobile' : e.paymentMethod === 'CARD' ? 'Card' : 'Bank'}
                           {e.bankAccount ? `: ${e.bankAccount.bankName}` : ''}
